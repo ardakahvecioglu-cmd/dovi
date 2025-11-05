@@ -41,7 +41,7 @@
   </div>
 
   <script>
-    // Altın fiyatı (güvenli CORS proxy)
+    // Altın fiyatı (çalışıyor)
     fetch("https://corsproxy.io/?https://finans.truncgil.com/v3/today.json")
       .then(res => res.json())
       .then(data => {
@@ -49,12 +49,14 @@
       })
       .catch(err => console.error("Altın verisi alınamadı:", err));
 
-    // Döviz fiyatı (güvenli CORS proxy)
+    // Döviz fiyatları (JSON metnini parse ediyor)
     function updateDoviz() {
       fetch("https://corsproxy.io/?https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP")
-        .then(res => res.json())
-        .then(data => {
+        .then(res => res.text()) // önce metin al
+        .then(txt => {
+          const data = JSON.parse(txt); // sonra parse et
           const rates = data.rates;
+          if (!rates) throw new Error("Kur verisi bulunamadı");
           document.getElementById("usd").innerText = (1 / rates.USD).toFixed(2) + " ₺";
           document.getElementById("eur").innerText = (1 / rates.EUR).toFixed(2) + " ₺";
           document.getElementById("gbp").innerText = (1 / rates.GBP).toFixed(2) + " ₺";
@@ -63,7 +65,7 @@
     }
 
     updateDoviz();
-    setInterval(updateDoviz, 15000); // 15 saniyede bir yenile
+    setInterval(updateDoviz, 15000);
   </script>
 </body>
 </html>
