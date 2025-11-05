@@ -5,33 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Canlı Döviz ve Altın Fiyatları</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f8f8f8;
-      text-align: center;
-      padding: 40px;
-    }
-    h1 {
-      color: #333;
-    }
+    body { font-family: Arial, sans-serif; background: #f8f8f8; text-align: center; padding: 40px; }
+    h1 { color: #333; }
     .card {
       display: inline-block;
       background: white;
       border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       margin: 10px;
       padding: 20px;
       width: 150px;
     }
-    .value {
-      font-size: 24px;
-      color: #2b8a3e;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-    .gold {
-      color: #c49b17;
-    }
+    .value { font-size: 24px; color: #2b8a3e; font-weight: bold; margin-top: 10px; }
+    .gold { color: #c49b17; }
   </style>
 </head>
 <body>
@@ -55,33 +41,29 @@
   </div>
 
   <script>
-    // CORS'suz Altın API (Truncgil)
-    fetch("https://finans.truncgil.com/v3/today.json")
+    // Altın fiyatı (CORS proxy ile)
+    fetch("https://api.allorigins.win/raw?url=https://finans.truncgil.com/v3/today.json")
       .then(res => res.json())
       .then(data => {
-        document.getElementById("altin").innerText =
-          data["gram-altin"].Selling + " ₺";
+        document.getElementById("altin").innerText = data["gram-altin"].Selling + " ₺";
       })
       .catch(err => console.error("Altın verisi alınamadı:", err));
 
-    // CORS'suz Döviz API (exchangerate.host)
+    // Döviz fiyatı (CORS proxy ile)
     function updateDoviz() {
-      fetch("https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP")
+      fetch("https://api.allorigins.win/raw?url=https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP")
         .then(res => res.json())
         .then(data => {
           const rates = data.rates;
-          document.getElementById("usd").innerText =
-            (1 / rates.USD).toFixed(2) + " ₺";
-          document.getElementById("eur").innerText =
-            (1 / rates.EUR).toFixed(2) + " ₺";
-          document.getElementById("gbp").innerText =
-            (1 / rates.GBP).toFixed(2) + " ₺";
+          document.getElementById("usd").innerText = (1 / rates.USD).toFixed(2) + " ₺";
+          document.getElementById("eur").innerText = (1 / rates.EUR).toFixed(2) + " ₺";
+          document.getElementById("gbp").innerText = (1 / rates.GBP).toFixed(2) + " ₺";
         })
         .catch(err => console.error("Döviz verisi alınamadı:", err));
     }
 
     updateDoviz();
-    setInterval(updateDoviz, 15000); // 15 saniyede bir yenile
+    setInterval(updateDoviz, 15000);
   </script>
 </body>
 </html>
