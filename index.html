@@ -27,43 +27,4 @@
     <div>💵 USD</div>
     <div id="usd" class="value">Yükleniyor...</div>
   </div>
-  <div class="card">
-    <div>💶 EUR</div>
-    <div id="eur" class="value">Yükleniyor...</div>
-  </div>
-  <div class="card">
-    <div>💷 GBP</div>
-    <div id="gbp" class="value">Yükleniyor...</div>
-  </div>
-  <div class="card">
-    <div>🥇 Gram Altın</div>
-    <div id="altin" class="value gold">Yükleniyor...</div>
-  </div>
-
-  <script>
-    // Altın fiyatını sadece 1 kez çekelim (fix)
-    fetch("https://api.genelpara.com/embed/altin.json")
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById("altin").innerText = data.GA.satis + " ₺";
-      })
-      .catch(err => console.error("Altın verisi alınamadı:", err));
-
-    // CORS'suz döviz API (https://api.exchangerate.host)
-    function updateDoviz() {
-      fetch("https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP")
-        .then(res => res.json())
-        .then(data => {
-          const rates = data.rates;
-          document.getElementById("usd").innerText = (1 / rates.USD).toFixed(2) + " ₺";
-          document.getElementById("eur").innerText = (1 / rates.EUR).toFixed(2) + " ₺";
-          document.getElementById("gbp").innerText = (1 / rates.GBP).toFixed(2) + " ₺";
-        })
-        .catch(err => console.error("Döviz verisi alınamadı:", err));
-    }
-
-    updateDoviz();
-    setInterval(updateDoviz, 15000); // 15 saniyede bir yenile
-  </script>
-</body>
-</html>
+  <div class="card
