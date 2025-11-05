@@ -41,17 +41,17 @@
   </div>
 
   <script>
-    // Altın fiyatı (CORS proxy ile)
-    fetch("https://api.allorigins.win/raw?url=https://finans.truncgil.com/v3/today.json")
+    // Altın fiyatı (güvenli CORS proxy)
+    fetch("https://corsproxy.io/?https://finans.truncgil.com/v3/today.json")
       .then(res => res.json())
       .then(data => {
         document.getElementById("altin").innerText = data["gram-altin"].Selling + " ₺";
       })
       .catch(err => console.error("Altın verisi alınamadı:", err));
 
-    // Döviz fiyatı (CORS proxy ile)
+    // Döviz fiyatı (güvenli CORS proxy)
     function updateDoviz() {
-      fetch("https://api.allorigins.win/raw?url=https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP")
+      fetch("https://corsproxy.io/?https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP")
         .then(res => res.json())
         .then(data => {
           const rates = data.rates;
@@ -63,7 +63,7 @@
     }
 
     updateDoviz();
-    setInterval(updateDoviz, 15000);
+    setInterval(updateDoviz, 15000); // 15 saniyede bir yenile
   </script>
 </body>
 </html>
