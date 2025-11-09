@@ -37,18 +37,10 @@ footer{
 const el = id => document.getElementById(id);
 const last = {};
 
-// Frankfurter API – dövizler
-async function getRate(from,to){
-  const res = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+async function getRates(){
+  const res = await fetch("https://open.er-api.com/v6/latest/USD");
   const data = await res.json();
-  return data.rates[to];
-}
-
-// GoldPrice.org API – altın ons (USD)
-async function getGoldUSD(){
-  const res = await fetch("https://data-asg.goldprice.org/dbXRates/USD");
-  const data = await res.json();
-  return data.items[0].xauPrice; // ons altın USD fiyatı
+  return data.rates;
 }
 
 function update(id,val){
@@ -66,26 +58,9 @@ function update(id,val){
 
 async function refresh(){
   try{
-    const [usd,eur,gbp,goldUSD] = await Promise.all([
-      getRate("USD","TRY"),
-      getRate("EUR","TRY"),
-      getRate("GBP","TRY"),
-      getGoldUSD()
-    ]);
-    const gram = (goldUSD * usd) / 31.1035;
-    update("usd",usd);
-    update("eur",eur);
-    update("gbp",gbp);
-    update("gold",gram);
-    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
-  }catch(e){
-    console.error(e);
-    el("time").textContent="Veri alınamadı";
-  }
-}
-
-refresh();
-setInterval(refresh,10000);
-</script>
-</body>
-</html>
+    const rates = await getRates();
+    const usdtry = rates.TRY;
+    const eurtry = usdtry / (rates.USD / rates.EUR);
+    const gbptry = usdtry / (rates.USD / rates.GBP);
+    const xauusd = rates.XAU ? 1 / rates.XAU : 2400; // XAU varsa onu kullan, yoksa yaklaşık ons değeri
+    const
