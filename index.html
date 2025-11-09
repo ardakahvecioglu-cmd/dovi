@@ -15,7 +15,6 @@ body{
   overflow:hidden;
   position:relative;
 }
-
 header{
   text-align:center;
   padding:20px 10px 0;
@@ -23,7 +22,6 @@ header{
   font-weight:600;
   color:#3aa0ff;
 }
-
 #time{
   position:absolute;
   bottom:90px;
@@ -33,7 +31,6 @@ header{
   font-size:14px;
   color:#bbb;
 }
-
 footer{
   position:absolute;
   bottom:0;
@@ -47,7 +44,6 @@ footer{
   backdrop-filter:blur(8px);
   border-top:1px solid #222;
 }
-
 .card{
   flex:1;
   text-align:center;
@@ -64,7 +60,6 @@ footer{
 </style>
 </head>
 <body>
-
 <header>💱 Canlı Kurlar</header>
 <div id="time">Yükleniyor...</div>
 
@@ -72,55 +67,4 @@ footer{
   <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
   <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
   <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
-  <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
-</footer>
-
-<script>
-const el = id => document.getElementById(id);
-const last = {};
-
-async function getRates(){
-  // Yeni ve CORS uyumlu API
-  const res = await fetch("https://api.exchangerate.host/latest?base=USD&symbols=TRY,EUR,GBP,XAU");
-  const data = await res.json();
-  return data.rates;
-}
-
-function update(id,val){
-  const e = el(id);
-  const v = parseFloat(val);
-  const prev = last[id];
-  last[id] = v;
-  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
-  if(prev){
-    if(v>prev) e.className="value up";
-    else if(v<prev) e.className="value down";
-    else e.className="value";
-  }
-}
-
-async function refresh(){
-  try{
-    const rates = await getRates();
-    const usdtry = rates.TRY;
-    const eurtry = usdtry / (1 / rates.EUR);
-    const gbptry = usdtry / (1 / rates.GBP);
-    const xauusd = rates.XAU ? 1 / rates.XAU : 2400;
-    const gram = (xauusd * usdtry) / 31.1035;
-
-    update("usd", usdtry);
-    update("eur", eurtry);
-    update("gbp", gbptry);
-    update("gold", gram);
-    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
-  }catch(e){
-    console.error(e);
-    el("time").textContent="Veri alınamadı";
-  }
-}
-
-refresh();
-setInterval(refresh,10000);
-</script>
-</body>
-</html>
+  <div class="card"><div class="label">GRAM ALTIN</div><div id="gol
