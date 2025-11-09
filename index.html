@@ -9,7 +9,7 @@ body{
   margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
   width:640px;height:1152px;overflow:hidden;position:relative;
 }
-header{text-align:center;padding:5px 10px;font-size:28px;font-weight:600;color:#3aa0ff;}
+header{text-align:center;font-size:28px;font-weight:600;color:#3aa0ff;}
 #time{text-align:center;font-size:13px;color:#999;margin-bottom:10px;}
 footer{
   position:absolute;bottom:0;left:0;width:100%;
@@ -45,20 +45,22 @@ footer{
 const el = id => document.getElementById(id);
 const last = {};
 
-// USD bazlı kur tablosu (mevcut kullandığın API)
+// Döviz oranlarını USD bazında çek
 async function getRates(){
   const res = await fetch("https://open.er-api.com/v6/latest/USD");
   const data = await res.json();
   return data.rates;
 }
 
-// Gram altını direkt TRY cinsinden al (1 XAU = ons)
-// Sonra 31.1035’e böl -> 1 gram ALTIN/TL
+// XAU→TRY dönüştürüp gram altın (0.995 saflık) hesapla
 async function getGramTry(){
   const r = await fetch("https://api.exchangerate.host/convert?from=XAU&to=TRY");
   const d = await r.json();
   if (d && typeof d.result === "number") {
-    return d.result / 31.1035; // 1 ons (TRY) -> gram
+    const onsTRY = d.result;                 // 1 ons kaç TL
+    const gram9999 = onsTRY / 31.1035;       // 1 gram (999.9)
+    const gramGAU  = gram9999 * 0.995;       // piyasadaki GAU/TRY (yaklaşık %99,5)
+    return gramGAU;
   }
   return null;
 }
@@ -80,9 +82,9 @@ async function refresh(){
   try{
     const [rates, gramTry] = await Promise.all([getRates(), getGramTry()]);
     const usdtry = rates.TRY;
-    const eurtry = usdtry / rates.EUR;  // düzeltildi
-    const gbptry = usdtry / rates.GBP;  // düzeltildi
-    const gram  = gramTry ?? ((usdtry * 2000) / 31.1035); // nadir durumda yedek
+    const eurtry = usdtry / rates.EUR;
+    const gbptry = usdtry / rates.GBP;
+    const gram = gramTry ?? ((usdtry * 2000) / 31.1035);
 
     update("usd", usdtry);
     update("eur", eurtry);
