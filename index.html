@@ -4,32 +4,75 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
 <title>Canlı Kurlar</title>
+<!-- Boş favicon, 404 hatasını engeller -->
+<link rel="icon" href="data:,">
+
 <style>
 body{
-  margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
-  width:640px;height:1152px;overflow:hidden;position:relative;
+  margin:0;
+  background:#0f1115;
+  color:#fff;
+  font-family:Segoe UI,Roboto,Arial,sans-serif;
+  width:640px;
+  height:1152px;
+  overflow:hidden;
+  position:relative;
 }
-header{text-align:center;font-size:28px;font-weight:600;color:#3aa0ff;}
-#time{text-align:center;font-size:13px;color:#999;margin-bottom:10px;}
+header{
+  text-align:center;
+  font-size:28px;
+  font-weight:600;
+  color:#3aa0ff;
+}
+#time{
+  text-align:center;
+  font-size:13px;
+  color:#999;
+  margin-bottom:10px;
+}
 footer{
-  position:absolute;bottom:0;left:0;width:100%;
-  display:flex;flex-direction:column;align-items:center;
-  padding:10px 15px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);border-top:1px solid #222;
+  position:absolute;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:10px 15px;
+  background:rgba(0,0,0,0.8);
+  backdrop-filter:blur(8px);
+  border-top:1px solid #222;
 }
 .cards{
   display:flex;
   justify-content:space-between;
   width:100%;
 }
-.card{flex:1;text-align:center;margin:0 5px;background:#1a1f29;border-radius:12px;padding:8px 6px;font-size:18px;}
-.label{font-size:12px;color:#aaa;margin-bottom:4px;}
-.value{font-weight:bold;font-size:22px;transition:color .3s;}
+.card{
+  flex:1;
+  text-align:center;
+  margin:0 5px;
+  background:#1a1f29;
+  border-radius:12px;
+  padding:8px 6px;
+  font-size:18px;
+}
+.label{
+  font-size:12px;
+  color:#aaa;
+  margin-bottom:4px;
+}
+.value{
+  font-weight:bold;
+  font-size:22px;
+  transition:color .3s;
+}
 .up{color:#18c964;}
 .down{color:#ff4d4f;}
 </style>
 </head>
-<body>
 
+<body>
 <footer>
   <header>💱 Canlı Kurlar</header>
   <div id="time">Yükleniyor...</div>
@@ -41,4 +84,55 @@ footer{
   </div>
 </footer>
 
-<
+<script>
+const el = id => document.getElementById(id);
+const last = {};
+
+async function getRates() {
+  const res = await fetch("https://api.exchangerate.host/latest?base=USD&symbols=TRY,EUR,GBP");
+  const data = await res.json();
+  if (!data.rates) throw new Error("Veri yok");
+  const usdtry = data.rates.TRY;
+  const eurtry = usdtry / data.rates.EUR;
+  const gbptry = usdtry / data.rates.GBP;
+  return { usdtry, eurtry, gbptry };
+}
+
+async function getGramTRY(usdtry) {
+  const onsUSD = 4000; // İstersen canlı API ile değiştirebiliriz
+  return (onsUSD * usdtry) / 31.1035;
+}
+
+function update(id, val) {
+  const e = el(id);
+  const prev = last[id];
+  last[id] = val;
+  e.textContent = val.toFixed(2);
+  if (prev)
+    e.className = val > prev ? "value up" : val < prev ? "value down" : "value";
+}
+
+async function refresh() {
+  try {
+    const { usdtry, eurtry, gbptry } = await getRates();
+    const gram = await getGramTRY(usdtry);
+
+    update("usd", usdtry);
+    update("eur", eurtry);
+    update("gbp", gbptry);
+    update("gold", gram);
+
+    el("time").textContent =
+      "Son güncelleme: " +
+      new Date().toLocaleTimeString("tr-TR", { hour12: false });
+  } catch (err) {
+    console.error(err);
+    el("time").textContent = "Veri alınamadı";
+  }
+}
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>
