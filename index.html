@@ -52,7 +52,6 @@ function update(id,val){
 
 async function refresh(){
   try{
-    // Tüm kurları tek API'den çekiyoruz (CORS uyumlu)
     const fxRes = await fetch("https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP,XAU");
     const fxData = await fxRes.json();
 
