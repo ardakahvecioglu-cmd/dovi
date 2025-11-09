@@ -68,9 +68,9 @@ async function refresh(){
   try{
     const rates = await getRates();
     const usdtry = rates.TRY;
-    const eurtry = usdtry / (rates.USD / rates.EUR);
-    const gbptry = usdtry / (rates.USD / rates.GBP);
-    const xauusd = rates.XAU ? 1 / rates.XAU : 2400;
+    const eurtry = usdtry / rates.EUR;
+    const gbptry = usdtry / rates.GBP;
+    const xauusd = rates.XAU ? 1 / rates.XAU : 2400; // XAU varsa onu kullan, yoksa yaklaşık ons değeri
     const gram = (xauusd * usdtry) / 31.1035;
 
     update("usd", usdtry);
