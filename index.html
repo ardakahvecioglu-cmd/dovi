@@ -1,20 +1,107 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
+<title>Canlı Kurlar</title>
+<style>
+body{
+  margin:0;
+  background:#0f1115;
+  color:#fff;
+  font-family:Segoe UI,Roboto,Arial,sans-serif;
+  width:640px;
+  height:1152px;
+  overflow:hidden;
+  position:relative;
+}
+header{
+  text-align:center;
+  padding:25px 10px 5px;
+  font-size:28px;
+  font-weight:600;
+  color:#3aa0ff;
+}
+#time{
+  text-align:center;
+  font-size:13px;
+  color:#999;
+  margin-bottom:10px;
+}
+footer{
+  position:absolute;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 15px;
+  background:rgba(0,0,0,0.8);
+  backdrop-filter:blur(8px);
+  border-top:1px solid #222;
+}
+.card{
+  flex:1;
+  text-align:center;
+  margin:0 5px;
+  background:#1a1f29;
+  border-radius:12px;
+  padding:8px 6px;
+  font-size:18px;
+  transition:all .3s ease;
+}
+.label{
+  font-size:12px;
+  color:#aaa;
+  margin-bottom:4px;
+}
+.value{
+  font-weight:bold;
+  font-size:22px;
+  transition:color .3s;
+}
+.up{color:#18c964;}
+.down{color:#ff4d4f;}
+</style>
+</head>
+<body>
+  <header>💱 Canlı Kurlar</header>
+  <div id="time">Yükleniyor...</div>
+  <footer>
+    <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
+    <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+    <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+    <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+  </footer>
+
 <script>
 const el = (id)=>document.getElementById(id);
 const last={};
 
-// Yeni anahtarsız API (Frankfurter)
+// --- Frankfurter (dövizler) ---
 async function getRate(from,to){
   const res = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
   const data = await res.json();
   return data.rates[to];
 }
 
+// --- Metals.live (ons altın USD) ---
+async function getGoldUSD(){
+  const res = await fetch("https://api.metals.live/v1/spot");
+  const data = await res.json();
+  // dönen veriden gold/USD fiyatını bul
+  const gold = data.find(x => x.hasOwnProperty("gold"));
+  return gold ? gold.gold : null;
+}
+
+// --- Görsel güncelleme ---
 function update(id,val){
   const v=parseFloat(val);
   const prev=last[id];
   last[id]=v;
   const e=el(id);
-  e.textContent=v.toFixed(2);
+  e.textContent=isNaN(v) ? "--" : v.toFixed(2);
   if(prev){
     if(v>prev) e.className="value up";
     else if(v<prev) e.className="value down";
@@ -22,27 +109,30 @@ function update(id,val){
   }
 }
 
+// --- Ana fonksiyon ---
 async function refresh(){
   try{
     const [usd,eur,gbp,xauusd]=await Promise.all([
       getRate("USD","TRY"),
       getRate("EUR","TRY"),
       getRate("GBP","TRY"),
-      getRate("XAU","USD") // Ons altın USD cinsinden gelir
+      getGoldUSD()
     ]);
-    const usdtry = usd; // zaten TRY
-    const goldGram = (xauusd * usdtry) / 31.1035; // onsu gram-altın TRY’ye çevir
+    const usdtry = usd;
+    const goldGram = (xauusd * usdtry) / 31.1035;
     update("usd",usdtry);
     update("eur",eur);
     update("gbp",gbp);
     update("gold",goldGram);
     el("time").textContent="Son güncelleme: "+new Date().toLocaleTimeString("tr-TR",{hour12:false});
   }catch(e){
-    el("time").textContent="Veri alınamadı";
     console.error(e);
+    el("time").textContent="Veri alınamadı";
   }
 }
 
 refresh();
 setInterval(refresh,10000);
 </script>
+</body>
+</html>
