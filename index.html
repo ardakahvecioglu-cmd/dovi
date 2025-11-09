@@ -37,19 +37,18 @@ footer{
 const el = id => document.getElementById(id);
 const last = {};
 
-// Frankfurter API – döviz
+// Frankfurter API – dövizler
 async function getRate(from,to){
-  const r = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
-  const j = await r.json();
-  return j.rates[to];
+  const res = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+  const data = await res.json();
+  return data.rates[to];
 }
 
-// Metals.live API – altın (USD/ons)
+// GoldPrice.org API – altın ons (USD)
 async function getGoldUSD(){
-  const r = await fetch("https://api.metals.live/v1/spot");
-  const j = await r.json();
-  const gold = j.find(x => x.gold);
-  return gold.gold;
+  const res = await fetch("https://data-asg.goldprice.org/dbXRates/USD");
+  const data = await res.json();
+  return data.items[0].xauPrice; // ons altın USD fiyatı
 }
 
 function update(id,val){
@@ -73,7 +72,7 @@ async function refresh(){
       getRate("GBP","TRY"),
       getGoldUSD()
     ]);
-    const gram = (goldUSD * usd) / 31.1035; // ons → gram altın TRY
+    const gram = (goldUSD * usd) / 31.1035;
     update("usd",usd);
     update("eur",eur);
     update("gbp",gbp);
