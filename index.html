@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
 <title>Canlı Kurlar</title>
+<link rel="icon" href="data:,">
 <style>
 body{
   margin:0;
@@ -53,18 +54,50 @@ footer{
   padding:8px 6px;
   font-size:18px;
 }
-.label{font-size:12px;color:#aaa;margin-bottom:4px;}
-.value{font-weight:bold;font-size:22px;transition:color .3s;}
+.label{
+  font-size:12px;
+  color:#aaa;
+  margin-bottom:4px;
+}
+.value{
+  font-weight:bold;
+  font-size:22px;
+  transition:color .3s;
+}
 .up{color:#18c964;}
 .down{color:#ff4d4f;}
 </style>
 </head>
 <body>
 <header>💱 Canlı Kurlar</header>
+
+<!-- Güncelleme zamanı (kurların hemen üstünde) -->
 <div id="time">Yükleniyor...</div>
 
 <footer>
   <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
   <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
   <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
-  <div class="card"><div class="label">GRAM ALTIN</div><div id="gol
+  <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+</footer>
+
+<script>
+const el = id => document.getElementById(id);
+const last = {};
+
+async function getRates(){
+  const res = await fetch("https://api.exchangerate.host/latest?base=USD&symbols=TRY,EUR,GBP,XAU");
+  const data = await res.json();
+  return data?.rates || {};
+}
+
+function update(id, val){
+  const e = el(id);
+  const v = parseFloat(val);
+  const prev = last[id];
+  last[id] = v;
+  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
+  if(prev){
+    if(v > prev) e.className = "value up";
+    else if(v < prev) e.className = "value down";
+    else e.className
