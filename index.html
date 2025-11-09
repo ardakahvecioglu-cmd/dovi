@@ -28,4 +28,56 @@ footer{
 <div id="time">Yükleniyor...</div>
 <footer>
   <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
-  <div class="card"><div class="label
+  <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+  <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+  <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+</footer>
+
+<script>
+const el = id => document.getElementById(id);
+const last = {};
+
+function update(id,val){
+  const e = el(id);
+  const v = parseFloat(val);
+  const prev = last[id];
+  last[id] = v;
+  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
+  if(prev){
+    if(v>prev) e.className="value up";
+    else if(v<prev) e.className="value down";
+    else e.className="value";
+  }
+}
+
+async function refresh(){
+  try{
+    // Tüm kurları tek API'den çekiyoruz (CORS uyumlu)
+    const fxRes = await fetch("https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP,XAU");
+    const fxData = await fxRes.json();
+
+    if(!fxData || !fxData.rates) throw new Error("API response boş geldi");
+
+    const usdtry = 1 / fxData.rates.USD;
+    const eurtry = 1 / fxData.rates.EUR;
+    const gbptry = 1 / fxData.rates.GBP;
+    const usdToXau = 1 / fxData.rates.XAU;
+    const gramAltin = (usdtry * usdToXau) / 31.1035;
+
+    update("usd", usdtry);
+    update("eur", eurtry);
+    update("gbp", gbptry);
+    update("gold", gramAltin);
+
+    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
+  }catch(e){
+    console.error("Hata:", e);
+    el("time").textContent="Veri alınamadı";
+  }
+}
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>
