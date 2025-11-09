@@ -45,4 +45,59 @@ footer{
 const el = id => document.getElementById(id);
 const last = {};
 
-// USD bazlı kur tablosu (mevcut kullan
+// USD bazlı kur tablosu (mevcut kullandığın API)
+async function getRates(){
+  const res = await fetch("https://open.er-api.com/v6/latest/USD");
+  const data = await res.json();
+  return data.rates;
+}
+
+// Gram altını direkt TRY cinsinden al (1 XAU = ons)
+// Sonra 31.1035’e böl -> 1 gram ALTIN/TL
+async function getGramTry(){
+  const r = await fetch("https://api.exchangerate.host/convert?from=XAU&to=TRY");
+  const d = await r.json();
+  if (d && typeof d.result === "number") {
+    return d.result / 31.1035; // 1 ons (TRY) -> gram
+  }
+  return null;
+}
+
+function update(id,val){
+  const e = el(id);
+  const v = parseFloat(val);
+  const prev = last[id];
+  last[id] = v;
+  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
+  if(prev){
+    if(v>prev) e.className="value up";
+    else if(v<prev) e.className="value down";
+    else e.className="value";
+  }
+}
+
+async function refresh(){
+  try{
+    const [rates, gramTry] = await Promise.all([getRates(), getGramTry()]);
+    const usdtry = rates.TRY;
+    const eurtry = usdtry / rates.EUR;  // düzeltildi
+    const gbptry = usdtry / rates.GBP;  // düzeltildi
+    const gram  = gramTry ?? ((usdtry * 2000) / 31.1035); // nadir durumda yedek
+
+    update("usd", usdtry);
+    update("eur", eurtry);
+    update("gbp", gbptry);
+    update("gold", gram);
+
+    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
+  }catch(e){
+    console.error(e);
+    el("time").textContent="Veri alınamadı";
+  }
+}
+
+refresh();
+setInterval(refresh,10000);
+</script>
+</body>
+</html>
