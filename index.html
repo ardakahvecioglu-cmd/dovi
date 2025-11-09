@@ -6,14 +6,21 @@
 <title>Canlı Kurlar</title>
 <style>
 body{
-  margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
-  width:640px;height:1152px;overflow:hidden;position:relative;
+  margin:0;
+  background:#0f1115;
+  color:#fff;
+  font-family:Segoe UI,Roboto,Arial,sans-serif;
+  width:640px;
+  height:1152px;
+  overflow:hidden;
+  position:relative;
 }
 
-/* === Başlık ve zaman alanı (kurların hemen üstünde) === */
+/* === Alt barın hemen üstündeki başlık === */
 .info{
-  position:absolute;
-  bottom:140px; /* alt barın hemen üstünde */
+  position:fixed;
+  bottom:100px; /* footer yüksekliği kadar yukarıda */
+  left:0;
   width:100%;
   text-align:center;
 }
@@ -28,96 +35,10 @@ body{
   margin:4px 0 0 0;
 }
 
-/* === Alt kurlar barı === */
+/* === Alt bar === */
 footer{
-  position:absolute;
+  position:fixed;
   bottom:0;
   left:0;
   width:100%;
   display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:10px 15px;
-  background:rgba(0,0,0,0.8);
-  backdrop-filter:blur(8px);
-  border-top:1px solid #222;
-}
-.card{
-  flex:1;
-  text-align:center;
-  margin:0 5px;
-  background:#1a1f29;
-  border-radius:12px;
-  padding:8px 6px;
-  font-size:18px;
-}
-.label{font-size:12px;color:#aaa;margin-bottom:4px;}
-.value{font-weight:bold;font-size:22px;transition:color .3s;}
-.up{color:#18c964;}
-.down{color:#ff4d4f;}
-</style>
-</head>
-<body>
-
-<!-- Kurların hemen üstünde bilgi alanı -->
-<div class="info">
-  <h1>💱 Canlı Kurlar</h1>
-  <p id="time">Yükleniyor...</p>
-</div>
-
-<!-- Kurlar -->
-<footer>
-  <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
-  <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
-  <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
-  <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
-</footer>
-
-<script>
-const el = id => document.getElementById(id);
-const last = {};
-
-async function getRates(){
-  const res = await fetch("https://open.er-api.com/v6/latest/USD");
-  const data = await res.json();
-  return data.rates;
-}
-
-function update(id,val){
-  const e = el(id);
-  const v = parseFloat(val);
-  const prev = last[id];
-  last[id] = v;
-  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
-  if(prev){
-    if(v>prev) e.className="value up";
-    else if(v<prev) e.className="value down";
-    else e.className="value";
-  }
-}
-
-async function refresh(){
-  try{
-    const rates = await getRates();
-    const usdtry = rates.TRY;
-    const eurtry = usdtry / (rates.USD / rates.EUR);
-    const gbptry = usdtry / (rates.USD / rates.GBP);
-    const xauusd = rates.XAU ? 1 / rates.XAU : 2400;
-    const gram = (xauusd * usdtry) / 31.1035;
-
-    update("usd", usdtry);
-    update("eur", eurtry);
-    update("gbp", gbptry);
-    update("gold", gram);
-    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
-  }catch(e){
-    console.error(e);
-    el("time").textContent="Veri alınamadı";
-  }
-}
-
-refresh();
-setInterval(refresh,10000);
-</script>
-</body>
-</html>
