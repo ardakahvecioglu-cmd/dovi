@@ -1,72 +1,79 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Canlı Döviz ve Altın Fiyatları</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f8f8f8; text-align: center; padding: 40px; }
-    h1 { color: #333; }
-    .card {
-      display: inline-block;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin: 10px;
-      padding: 20px;
-      width: 150px;
-    }
-    .value { font-size: 24px; color: #2b8a3e; font-weight: bold; margin-top: 10px; }
-    .gold { color: #c49b17; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
+<title>Canlı Kurlar – 640×1152</title>
+<style>
+body{
+  margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
+  width:640px;height:1152px;overflow:hidden;position:relative;
+}
+footer{
+  position:absolute;bottom:0;left:0;width:100%;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 15px;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);
+  border-top:1px solid #222;
+}
+.card{
+  flex:1;text-align:center;margin:0 5px;background:#1a1f29;
+  border-radius:12px;padding:8px 6px;font-size:18px;
+}
+.label{font-size:12px;color:#aaa;margin-bottom:4px;}
+.value{font-weight:bold;font-size:22px;transition:color .3s;}
+.up{color:#18c964;}
+.down{color:#ff4d4f;}
+#time{position:absolute;bottom:65px;width:100%;text-align:center;color:#888;font-size:12px;}
+</style>
 </head>
 <body>
-  <h1>Canlı Döviz ve Altın Fiyatları</h1>
+  <div id="time">Yükleniyor...</div>
+  <footer>
+    <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
+    <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+    <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+    <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+  </footer>
 
-  <div class="card">
-    <div>💵 USD</div>
-    <div id="usd" class="value">Yükleniyor...</div>
-  </div>
-  <div class="card">
-    <div>💶 EUR</div>
-    <div id="eur" class="value">Yükleniyor...</div>
-  </div>
-  <div class="card">
-    <div>💷 GBP</div>
-    <div id="gbp" class="value">Yükleniyor...</div>
-  </div>
-  <div class="card">
-    <div>🥇 Gram Altın</div>
-    <div id="altin" class="value gold">Yükleniyor...</div>
-  </div>
-
-  <script>
-    // 🔗 Buraya senin proxy adresini yaz (örnek: https://dovizproxy.onrender.com)
-    const API_BASE = "https://dovizproxy.onrender.com";
-
-    // Altın fiyatı
-    fetch(`${API_BASE}/altin`)
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById("altin").innerText = data["gram-altin"].Selling + " ₺";
-      })
-      .catch(err => console.error("Altın verisi alınamadı:", err));
-
-    // Döviz fiyatı
-    function updateDoviz() {
-      fetch(`${API_BASE}/doviz`)
-        .then(res => res.json())
-        .then(data => {
-          const rates = data.rates;
-          document.getElementById("usd").innerText = (1 / rates.USD).toFixed(2) + " ₺";
-          document.getElementById("eur").innerText = (1 / rates.EUR).toFixed(2) + " ₺";
-          document.getElementById("gbp").innerText = (1 / rates.GBP).toFixed(2) + " ₺";
-        })
-        .catch(err => console.error("Döviz verisi alınamadı:", err));
-    }
-
-    updateDoviz();
-    setInterval(updateDoviz, 15000); // 15 saniyede bir yenile
-  </script>
+<script>
+const el = (id)=>document.getElementById(id);
+const last={};
+async function getRate(from,to){
+  const r=await fetch(`https://api.exchangerate.host/convert?from=${from}&to=${to}&t=${Date.now()}`);
+  const j=await r.json();
+  return j.result;
+}
+function update(id,val){
+  const v=parseFloat(val);
+  const prev=last[id];
+  last[id]=v;
+  const e=el(id);
+  e.textContent=v.toFixed(2);
+  if(prev){
+    if(v>prev) e.className="value up";
+    else if(v<prev) e.className="value down";
+    else e.className="value";
+  }
+}
+async function refresh(){
+  try{
+    const [usd,eur,gbp,xau]=await Promise.all([
+      getRate("USD","TRY"),
+      getRate("EUR","TRY"),
+      getRate("GBP","TRY"),
+      getRate("XAU","TRY")
+    ]);
+    update("usd",usd);
+    update("eur",eur);
+    update("gbp",gbp);
+    update("gold",xau/31.1035);
+    el("time").textContent="Son güncelleme: "+new Date().toLocaleTimeString("tr-TR",{hour12:false});
+  }catch(e){
+    console.error(e);
+  }
+}
+refresh();
+setInterval(refresh,10000);
+</script>
 </body>
 </html>
