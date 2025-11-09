@@ -45,10 +45,20 @@ footer{
 const el = id => document.getElementById(id);
 const last = {};
 
+// Döviz oranları (USD bazlı) – mevcutta kullandığın API aynen duruyor
 async function getRates(){
   const res = await fetch("https://open.er-api.com/v6/latest/USD");
   const data = await res.json();
   return data.rates;
+}
+
+// Ons altın (XAU/USD) – yalnızca altın için exchangerate.host kullan
+async function getXauUsd(){
+  const res = await fetch("https://api.exchangerate.host/latest?base=USD&symbols=XAU");
+  const data = await res.json();
+  const xau = data && data.rates && data.rates.XAU;
+  // exchangerate.host: base=USD iken rates.XAU = 1 USD kaç XAU eder ⇒ XAU/USD = 1 / rates.XAU
+  return xau ? (1 / xau) : null;
 }
 
 function update(id,val){
@@ -66,17 +76,21 @@ function update(id,val){
 
 async function refresh(){
   try{
-    const rates = await getRates();
+    const [rates, xauusdFetched] = await Promise.all([getRates(), getXauUsd()]);
     const usdtry = rates.TRY;
     const eurtry = usdtry / rates.EUR;
     const gbptry = usdtry / rates.GBP;
-    const xauusd = rates.XAU ? 1 / rates.XAU : 2400; // XAU varsa onu kullan, yoksa yaklaşık ons değeri
+
+    // XAU/USD gelmezse son çare küçük bir fallback kullan
+    const xauusd = xauusdFetched ?? 2000; // mümkün olduğunca kullanılmayacak
+
     const gram = (xauusd * usdtry) / 31.1035;
 
     update("usd", usdtry);
     update("eur", eurtry);
     update("gbp", gbptry);
     update("gold", gram);
+
     el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
   }catch(e){
     console.error(e);
