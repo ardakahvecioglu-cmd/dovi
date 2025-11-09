@@ -37,7 +37,7 @@ footer{
     <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
     <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
     <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
-    <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+    <div the="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
   </div>
 </footer>
 
@@ -45,61 +45,57 @@ footer{
 const el = id => document.getElementById(id);
 const last = {};
 
-// Döviz oranlarını USD bazında çek
-async function getRates(){
-  const res = await fetch("https://open.er-api.com/v6/latest/USD");
+// Döviz kurlarını getiren fonksiyon
+async function getRatesTRY(){
+  const res = await fetch("https://api.exchangerate.host/latest?base=USD&symbols=TRY,EUR,GBP");
   const data = await res.json();
-  return data.rates;
+  return {
+    usdtry: data.rates.TRY,
+    eurtry: (data.rates.TRY / data.rates.EUR),
+    gbptry: (data.rates.TRY / data.rates.GBP)
+  };
 }
 
-// XAU→TRY dönüştürüp gram altın (0.995 saflık) hesapla
-async function getGramTry(){
-  const r = await fetch("https://api.exchangerate.host/convert?from=XAU&to=TRY");
-  const d = await r.json();
-  if (d && typeof d.result === "number") {
-    const onsTRY = d.result;                 // 1 ons kaç TL
-    const gram9999 = onsTRY / 31.1035;       // 1 gram (999.9)
-    const gramGAU  = gram9999 * 0.995;       // piyasadaki GAU/TRY (yaklaşık %99,5)
-    return gramGAU;
-  }
-  return null;
+// Ons altın (USD/ons) getiren fonksiyon
+async function getOnsUSD(){
+  const apiKey = "YOUR_METALS_API_KEY";  // burada Metals-API anahtarını gir
+  const res = await fetch(`https://metals-api.com/api/latest?access_key=${apiKey}&base=USD&symbols=XAU`);
+  const data = await res.json();
+  // data.rates.XAU = 1 USD kaç XAU olduğuna dair değer,
+  // ons USD = 1 / data.rates.XAU
+  const onsUSD = 1 / data.rates.XAU;
+  return onsUSD;
 }
 
-function update(id,val){
-  const e = el(id);
-  const v = parseFloat(val);
-  const prev = last[id];
-  last[id] = v;
-  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
-  if(prev){
-    if(v>prev) e.className="value up";
-    else if(v<prev) e.className="value down";
-    else e.className="value";
-  }
+// Gram altın TRY hesabı
+async function getGramTRY(usdtry){
+  const onsUSD = await getOnsUSD();
+  const gram = (onsUSD * usdtry) / 31.1035;
+  return gram;
 }
 
+// Güncelleme fonksiyonu
 async function refresh(){
   try{
-    const [rates, gramTry] = await Promise.all([getRates(), getGramTry()]);
-    const usdtry = rates.TRY;
-    const eurtry = usdtry / rates.EUR;
-    const gbptry = usdtry / rates.GBP;
-    const gram = gramTry ?? ((usdtry * 2000) / 31.1035);
+    const { usdtry, eurtry, gbptry } = await getRatesTRY();
+    const gramtry = await getGramTRY(usdtry);
 
-    update("usd", usdtry);
-    update("eur", eurtry);
-    update("gbp", gbptry);
-    update("gold", gram);
+    el("usd").textContent = usdtry.toFixed(2);
+    el("eur").textContent = eurtry.toFixed(2);
+    el("gbp").textContent = gbptry.toFixed(2);
+    el("gold").textContent = gramtry.toFixed(2);
 
     el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
-  }catch(e){
+  } catch(e){
     console.error(e);
-    el("time").textContent="Veri alınamadı";
+    el("time").textContent = "Veri alınamadı";
   }
 }
 
+// Her 10 saniyede bir çalıştır
 refresh();
-setInterval(refresh,10000);
+setInterval(refresh, 10000);
 </script>
+
 </body>
 </html>
