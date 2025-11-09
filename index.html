@@ -16,11 +16,10 @@ body{
   position:relative;
 }
 
-/* === Başlık (kurların hemen üstünde) === */
+/* === Alt barın hemen üstündeki başlık === */
 .info{
   position:fixed;
-  bottom:80px; /* alt bara çok yakın */
-  left:0;
+  bottom:80px; /* alt barın hemen üstü */
   width:100%;
   text-align:center;
 }
@@ -28,21 +27,6 @@ body{
   font-size:26px;
   color:#3aa0ff;
   margin:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-}
-.live-dot{
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  background:red;
-  animation:blink 1s infinite;
-}
-@keyframes blink{
-  0%,50%{opacity:1;}
-  51%,100%{opacity:0.2;}
 }
 .info p{
   font-size:13px;
@@ -60,7 +44,7 @@ footer{
   justify-content:space-between;
   align-items:center;
   padding:10px 15px;
-  background:rgba(0,0,0,0.85);
+  background:rgba(0,0,0,0.8);
   backdrop-filter:blur(8px);
   border-top:1px solid #222;
 }
@@ -81,14 +65,12 @@ footer{
 </head>
 <body>
 
-<!-- Başlık -->
+<!-- Başlık ve zaman bilgisi -->
 <div class="info">
-  <h1><div class="live-dot"></div>💱 Canlı Kurlar</h1>
+  <h1>💱 Canlı Kurlar</h1>
   <p id="time">Yükleniyor...</p>
 </div>
 
 <!-- Alt bar -->
 <footer>
-  <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
-  <div class="card"><div cla
-
+  <div
