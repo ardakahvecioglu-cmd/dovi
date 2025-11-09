@@ -43,12 +43,13 @@ footer{
 
 <script>
 const el = id => document.getElementById(id);
-const last = {};
 
-// Dövizleri exchangerate.host'tan çek
+// Dövizleri exchangerate.host'tan çekiyoruz (TRY bazlı)
 async function getRates() {
   const res = await fetch("https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP");
+  if (!res.ok) throw new Error("API hatası");
   const data = await res.json();
+  if (!data.rates) throw new Error("Veri yok");
   const usdtry = 1 / data.rates.USD;
   const eurtry = 1 / data.rates.EUR;
   const gbptry = 1 / data.rates.GBP;
@@ -58,17 +59,18 @@ async function getRates() {
 // Ons altın (USD bazlı)
 async function getOnsUSD() {
   const res = await fetch("https://api.exchangerate.host/latest?base=XAU&symbols=USD");
+  if (!res.ok) throw new Error("Altın API hatası");
   const data = await res.json();
+  if (!data.rates || !data.rates.USD) throw new Error("Altın verisi yok");
   return 1 / data.rates.USD;
 }
 
-// Gram altın TL hesabı
+// Gram altın hesapla (ons → gram dönüşümü)
 async function getGramTRY(usdtry) {
   const onsUSD = await getOnsUSD();
   return (onsUSD * usdtry) / 31.1035;
 }
 
-// Güncelleme fonksiyonu
 async function refresh() {
   try {
     const { usdtry, eurtry, gbptry } = await getRates();
@@ -78,10 +80,9 @@ async function refresh() {
     el("eur").textContent = eurtry.toFixed(2);
     el("gbp").textContent = gbptry.toFixed(2);
     el("gold").textContent = gram.toFixed(2);
-
     el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error(err);
     el("time").textContent = "Veri alınamadı";
   }
 }
