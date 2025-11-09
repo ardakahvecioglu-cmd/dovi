@@ -9,14 +9,16 @@ body{
   margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
   width:640px;height:1152px;overflow:hidden;position:relative;
 }
+
+/* === Başlık ve zaman alanı (kurların hemen üstünde) === */
 .info{
   position:absolute;
-  bottom:120px;
+  bottom:140px; /* alt barın hemen üstünde */
   width:100%;
   text-align:center;
 }
 .info h1{
-  font-size:28px;
+  font-size:26px;
   color:#3aa0ff;
   margin:0;
 }
@@ -25,6 +27,8 @@ body{
   color:#aaa;
   margin:4px 0 0 0;
 }
+
+/* === Alt kurlar barı === */
 footer{
   position:absolute;
   bottom:0;
@@ -55,11 +59,13 @@ footer{
 </head>
 <body>
 
+<!-- Kurların hemen üstünde bilgi alanı -->
 <div class="info">
   <h1>💱 Canlı Kurlar</h1>
   <p id="time">Yükleniyor...</p>
 </div>
 
+<!-- Kurlar -->
 <footer>
   <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
   <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
