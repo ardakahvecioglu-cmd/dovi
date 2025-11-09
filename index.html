@@ -45,9 +45,50 @@ footer{
 const el = id => document.getElementById(id);
 const last = {};
 
-// Frankfurter API (EUR tabanlı) — TRY dahil tüm majör kurlar mevcut
+// 1️⃣ Döviz verileri (OpenER API)
 async function getRates(){
-  const res = await fetch("https://api.frankfurter.app/latest?from=EUR&to=TRY,USD,GBP");
+  const res = await fetch("https://open.er-api.com/v6/latest/USD");
   const data = await res.json();
-  const eurtry = data.rates.TRY;
-  const usdtry
+  if(!data || !data.rates) throw new Error("Veri alınamadı");
+  const usdtry = data.rates.TRY;
+  const eurtry = usdtry / data.rates.EUR;
+  const gbptry = usdtry / data.rates.GBP;
+  return { usdtry, eurtry, gbptry };
+}
+
+// 2️⃣ Ons altın (XAU/USD)
+async function getOnsUSD(){
+  const res = await fetch("https://api.exchangerate.host/latest?base=XAU&symbols=USD");
+  const data = await res.json();
+  return 1 / data.rates.USD;
+}
+
+// 3️⃣ Gram altın TRY
+async function getGramTRY(usdtry){
+  const onsUSD = await getOnsUSD();
+  return (onsUSD * usdtry) / 31.1035;
+}
+
+// 4️⃣ Güncelleme fonksiyonu
+async function refresh(){
+  try{
+    const { usdtry, eurtry, gbptry } = await getRates();
+    const gram = await getGramTRY(usdtry);
+
+    el("usd").textContent = usdtry.toFixed(2);
+    el("eur").textContent = eurtry.toFixed(2);
+    el("gbp").textContent = gbptry.toFixed(2);
+    el("gold").textContent = gram.toFixed(2);
+
+    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
+  }catch(e){
+    console.error(e);
+    el("time").textContent = "Veri alınamadı";
+  }
+}
+
+refresh();
+setInterval(refresh,10000);
+</script>
+</body>
+</html>
