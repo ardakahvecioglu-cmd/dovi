@@ -16,28 +16,29 @@ body{
   position:relative;
 }
 
-/* Üst başlık */
+/* === Üst başlık === */
 header{
   text-align:center;
-  padding:25px 10px 5px;
+  padding:20px 10px 0;
   font-size:28px;
   font-weight:600;
   color:#3aa0ff;
 }
 
-/* Güncelleme zamanı — kurların hemen üstünde */
+/* === Güncelleme zamanı — kurların hemen üstünde === */
 #time{
-  position:fixed;
-  bottom:85px; /* footer'ın hemen üstü */
+  position:absolute;
+  bottom:90px; /* footer yüksekliğine göre ayarlandı */
+  left:0;
   width:100%;
   text-align:center;
-  font-size:13px;
-  color:#999;
+  font-size:14px;
+  color:#bbb;
 }
 
-/* Alt bar */
+/* === Alt bar === */
 footer{
-  position:fixed;
+  position:absolute;
   bottom:0;
   left:0;
   width:100%;
@@ -45,7 +46,7 @@ footer{
   justify-content:space-between;
   align-items:center;
   padding:10px 15px;
-  background:rgba(0,0,0,0.8);
+  background:rgba(0,0,0,0.85);
   backdrop-filter:blur(8px);
   border-top:1px solid #222;
 }
@@ -75,4 +76,19 @@ footer{
 <!-- Kurlar -->
 <footer>
   <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
-  <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div
+  <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+  <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+  <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+</footer>
+
+<script>
+const el = id => document.getElementById(id);
+const last = {};
+
+async function getRates(){
+  const res = await fetch("https://open.er-api.com/v6/latest/USD");
+  const data = await res.json();
+  return data.rates;
+}
+
+function update(i
