@@ -45,40 +45,40 @@ footer{
 const el = id => document.getElementById(id);
 const last = {};
 
-// 1️⃣ Döviz verileri (OpenER API)
+// Proxy URL — kendi kuracağın sunucu ya da serverless fonksiyon
+const PROXY_URL = "https://your-proxy.example.com/api/rates";
+
 async function getRates(){
-  const res = await fetch("https://open.er-api.com/v6/latest/USD");
+  const res = await fetch(PROXY_URL);
   const data = await res.json();
-  if(!data || !data.rates) throw new Error("Veri alınamadı");
-  const usdtry = data.rates.TRY;
-  const eurtry = usdtry / data.rates.EUR;
-  const gbptry = usdtry / data.rates.GBP;
-  return { usdtry, eurtry, gbptry };
+  // Burada proxy verisi şöyle dönmeli: { usdtry: …, eurtry: …, gbptry: … }
+  return {
+    usdtry: data.usdtry,
+    eurtry: data.eurtry,
+    gbptry: data.gbptry
+  };
 }
 
-// 2️⃣ Ons altın (XAU/USD)
 async function getOnsUSD(){
   const res = await fetch("https://api.exchangerate.host/latest?base=XAU&symbols=USD");
   const data = await res.json();
   return 1 / data.rates.USD;
 }
 
-// 3️⃣ Gram altın TRY
 async function getGramTRY(usdtry){
   const onsUSD = await getOnsUSD();
   return (onsUSD * usdtry) / 31.1035;
 }
 
-// 4️⃣ Güncelleme fonksiyonu
 async function refresh(){
   try{
     const { usdtry, eurtry, gbptry } = await getRates();
-    const gram = await getGramTRY(usdtry);
+    const gramtry = await getGramTRY(usdtry);
 
     el("usd").textContent = usdtry.toFixed(2);
     el("eur").textContent = eurtry.toFixed(2);
     el("gbp").textContent = gbptry.toFixed(2);
-    el("gold").textContent = gram.toFixed(2);
+    el("gold").textContent = gramtry.toFixed(2);
 
     el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
   }catch(e){
@@ -90,5 +90,6 @@ async function refresh(){
 refresh();
 setInterval(refresh,10000);
 </script>
+
 </body>
 </html>
