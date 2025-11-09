@@ -52,21 +52,14 @@ function update(id,val){
 
 async function refresh(){
   try{
-    // USD bazlı tüm dövizler
-    const fx = await fetch("https://open.er-api.com/v6/latest/USD");
-    const data = await fx.json();
-    const usdtry = data.rates.TRY;
-    const eurusd = 1 / data.rates.EUR; // 1 EUR = x USD
-    const gbpusd = 1 / data.rates.GBP; // 1 GBP = x USD
-    const eurtry = usdtry * eurusd;
-    const gbptry = usdtry * gbpusd;
-
-    // Altın için ayrı sorgu (USD/XAU)
-    const goldRes = await fetch("https://api.exchangerate.host/latest?base=USD&symbols=XAU,TRY");
-    const goldData = await goldRes.json();
-    const usdToTry = goldData.rates.TRY;
-    const usdToXau = goldData.rates.XAU;
-    const gramAltin = (usdToTry / usdToXau) / 31.1035;
+    // Tüm kurları tek API'den çekiyoruz (CORS uyumlu)
+    const fxRes = await fetch("https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP,XAU");
+    const fxData = await fxRes.json();
+    const usdtry = 1 / fxData.rates.USD;
+    const eurtry = 1 / fxData.rates.EUR;
+    const gbptry = 1 / fxData.rates.GBP;
+    const usdToXau = 1 / fxData.rates.XAU;
+    const gramAltin = (usdtry * usdToXau) / 31.1035;
 
     update("usd", usdtry);
     update("eur", eurtry);
