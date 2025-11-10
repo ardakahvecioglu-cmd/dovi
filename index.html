@@ -15,24 +15,28 @@
       overflow:hidden;
       position:relative;
     }
-    /* Başlık + zaman: footer'ın hemen üstünde, ortalanmış */
+
+    /* Başlık + zaman: kartların hemen üstünde, SOLA yaslı */
     header{
       position:absolute;
-      left:0;
-      bottom:95px; /* footer yüksekliğinin biraz üstü */
-      width:100%;
-      text-align:center;
-      padding:0 10px 5px;
+      left:15px;
+      right:15px;
+      bottom:95px; /* footer'ın biraz üstü */
+      padding:0 0 5px;
       font-size:28px;
       font-weight:600;
       color:#3aa0ff;
+      display:flex;
+      align-items:baseline;
+      gap:10px;
+      text-align:left;
       white-space:nowrap;
     }
     header #time{
       font-size:14px;
       color:#bbb;
-      margin-left:12px;
       font-weight:400;
+      margin-left:0;
     }
 
     footer{
@@ -72,7 +76,7 @@
   </style>
 </head>
 <body>
-  <!-- Kartların hemen üstünde gösterilecek satır -->
+  <!-- Sola yaslı: 💱 Canlı Kurlar Son güncelleme: 00:12:31 -->
   <header>
     💱 Canlı Kurlar
     <span id="time">Yükleniyor...</span>
