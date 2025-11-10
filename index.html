@@ -1,7 +1,6 @@
 <script>
 const el = id => document.getElementById(id);
 const last = {};
-
 function update(id,val){
   const e = el(id);
   const v = parseFloat(val);
@@ -15,21 +14,39 @@ function update(id,val){
   }
 }
 
+// Basit timeout'lu fetch (ağ takılmalarına karşı)
+function fetchWithTimeout(url, ms=8000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms);
+  return fetch(url, {signal: ctrl.signal})
+    .finally(()=>clearTimeout(t));
+}
+
 async function refresh(){
   try{
-    const fxRes = await fetch("https://api.frankfurter.app/latest?from=USD&to=TRY,EUR,GBP");
-    const fxData = await fxRes.json();
-    if(!fxData || !fxData.rates) throw new Error("API boş");
+    // 1) USD tabanlı kurlar (TRY, EUR, GBP) – jsDelivr / currency-api (günlük)
+    const usdRes = await fetchWithTimeout(
+      "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd.json"
+    );
+    const usdJson = await usdRes.json();
+    if(!usdJson || !usdJson.usd) throw new Error("USD verisi boş");
 
-    const usdtry = fxData.rates.TRY;
-    const eurtry = usdtry / fxData.rates.EUR;
-    const gbptry = usdtry / fxData.rates.GBP;
+    const usdtry = usdJson.usd.try;       // 1 USD kaç TRY
+    const usdeur = usdJson.usd.eur;       // 1 USD kaç EUR
+    const usdgbp = usdJson.usd.gbp;       // 1 USD kaç GBP
 
-    // Altın fiyatı (ons) için ayrı kaynaktan:
-    const goldRes = await fetch("https://data-asg.goldprice.org/dbXRates/USD");
-    const goldData = await goldRes.json();
-    const onsUsd = goldData.items[0].xauPrice;
-    const gramAltin = (usdtry / onsUsd) / 31.1035;
+    const eurtry = usdtry / usdeur;       // 1 EUR kaç TRY
+    const gbptry = usdtry / usdgbp;       // 1 GBP kaç TRY
+
+    // 2) Altın/Ons (XAU) – yine jsDelivr verisi
+    const xauRes = await fetchWithTimeout(
+      "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/xau.json"
+    );
+    const xauJson = await xauRes.json();
+    if(!xauJson || !xauJson.xau || !xauJson.xau.usd) throw new Error("XAU verisi boş");
+
+    const xauUsd = xauJson.xau.usd;       // 1 XAU (ons) kaç USD
+    const gramAltin = (usdtry / xauUsd) / 31.1035; // 1 gram altın kaç TRY
 
     update("usd", usdtry);
     update("eur", eurtry);
@@ -39,7 +56,7 @@ async function refresh(){
     el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
   }catch(e){
     console.error("Hata:", e);
-    el("time").textContent="Veri alınamadı";
+    el("time").textContent = "Veri alınamadı";
   }
 }
 
