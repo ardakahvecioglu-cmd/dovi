@@ -93,7 +93,7 @@
 
     function update(id, val){
       const e = el(id);
-      if (!e) return; // güvenlik: eleman yoksa patlama
+      if (!e) return; // güvenlik
       const v = parseFloat(val);
       const prev = last[id];
       last[id] = v;
@@ -116,28 +116,29 @@
 
     async function refresh(){
       try{
-        // USD bazlı kurlar (TRY, EUR, GBP)
+        // 1) USD bazlı tüm kurlar
         const usdRes = await fetchWithTimeout(
-          "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd.json"
+          "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
         );
         const usdJson = await usdRes.json();
         if (!usdJson || !usdJson.usd) throw new Error("USD verisi boş");
 
-        const usdtry = usdJson.usd.try;   // 1 USD = ? TRY
-        const usdeur = usdJson.usd.eur;   // 1 USD = ? EUR
-        const usdgbp = usdJson.usd.gbp;   // 1 USD = ? GBP
+        const rates = usdJson.usd;
+        const usdtry = rates.try;   // 1 USD = ? TRY
+        const usdeur = rates.eur;   // 1 USD = ? EUR
+        const usdgbp = rates.gbp;   // 1 USD = ? GBP
 
         const eurtry = usdtry / usdeur;   // 1 EUR = ? TRY
         const gbptry = usdtry / usdgbp;   // 1 GBP = ? TRY
 
-        // Altın (XAU) verisi
+        // 2) XAU (altın ons) verisi
         const xauRes = await fetchWithTimeout(
-          "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/xau.json"
+          "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xau.json"
         );
         const xauJson = await xauRes.json();
         if (!xauJson || !xauJson.xau || !xauJson.xau.usd) throw new Error("XAU verisi boş");
 
-        const xauUsd = xauJson.xau.usd;         // 1 XAU = ? USD
+        const xauUsd = xauJson.xau.usd;          // 1 XAU = ? USD
         const gramAltin = (usdtry / xauUsd) / 31.1035;
 
         update("usd", usdtry);
