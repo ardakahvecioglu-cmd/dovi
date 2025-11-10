@@ -1,65 +1,161 @@
-<script>
-const el = id => document.getElementById(id);
-const last = {};
-function update(id,val){
-  const e = el(id);
-  const v = parseFloat(val);
-  const prev = last[id];
-  last[id] = v;
-  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
-  if(prev){
-    if(v>prev) e.className="value up";
-    else if(v<prev) e.className="value down";
-    else e.className="value";
-  }
-}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
+  <title>Canlı Kurlar</title>
+  <style>
+    body{
+      margin:0;
+      background:#0f1115;
+      color:#fff;
+      font-family:Segoe UI,Roboto,Arial,sans-serif;
+      width:640px;
+      height:1152px;
+      overflow:hidden;
+      position:relative;
+    }
+    header{
+      text-align:center;
+      padding:25px 10px 5px;
+      font-size:28px;
+      font-weight:600;
+      color:#3aa0ff;
+    }
+    #time{
+      text-align:center;
+      font-size:13px;
+      color:#999;
+      margin-bottom:10px;
+    }
+    footer{
+      position:absolute;
+      bottom:0;
+      left:0;
+      width:100%;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:10px 15px;
+      background:rgba(0,0,0,0.8);
+      backdrop-filter:blur(8px);
+      border-top:1px solid #222;
+    }
+    .card{
+      flex:1;
+      text-align:center;
+      margin:0 5px;
+      background:#1a1f29;
+      border-radius:12px;
+      padding:8px 6px;
+      font-size:18px;
+    }
+    .label{
+      font-size:12px;
+      color:#aaa;
+      margin-bottom:4px;
+    }
+    .value{
+      font-weight:bold;
+      font-size:22px;
+      transition:color .3s;
+    }
+    .up{color:#18c964;}
+    .down{color:#ff4d4f;}
+  </style>
+</head>
+<body>
+  <header>💱 Canlı Kurlar</header>
+  <div id="time">Yükleniyor...</div>
 
-// Basit timeout'lu fetch (ağ takılmalarına karşı)
-function fetchWithTimeout(url, ms=8000){
-  const ctrl = new AbortController();
-  const t = setTimeout(()=>ctrl.abort(), ms);
-  return fetch(url, {signal: ctrl.signal})
-    .finally(()=>clearTimeout(t));
-}
+  <footer>
+    <div class="card">
+      <div class="label">USD / TRY</div>
+      <div id="usd" class="value">--</div>
+    </div>
+    <div class="card">
+      <div class="label">EUR / TRY</div>
+      <div id="eur" class="value">--</div>
+    </div>
+    <div class="card">
+      <div class="label">GBP / TRY</div>
+      <div id="gbp" class="value">--</div>
+    </div>
+    <div class="card">
+      <div class="label">GRAM ALTIN</div>
+      <div id="gold" class="value">--</div>
+    </div>
+  </footer>
 
-async function refresh(){
-  try{
-    // 1) USD tabanlı kurlar (TRY, EUR, GBP) – jsDelivr / currency-api (günlük)
-    const usdRes = await fetchWithTimeout(
-      "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd.json"
-    );
-    const usdJson = await usdRes.json();
-    if(!usdJson || !usdJson.usd) throw new Error("USD verisi boş");
+  <script>
+    const el = id => document.getElementById(id);
+    const last = {};
 
-    const usdtry = usdJson.usd.try;       // 1 USD kaç TRY
-    const usdeur = usdJson.usd.eur;       // 1 USD kaç EUR
-    const usdgbp = usdJson.usd.gbp;       // 1 USD kaç GBP
+    function update(id, val){
+      const e = el(id);
+      if (!e) return; // güvenlik: eleman yoksa patlama
+      const v = parseFloat(val);
+      const prev = last[id];
+      last[id] = v;
 
-    const eurtry = usdtry / usdeur;       // 1 EUR kaç TRY
-    const gbptry = usdtry / usdgbp;       // 1 GBP kaç TRY
+      e.textContent = isNaN(v) ? "--" : v.toFixed(2);
 
-    // 2) Altın/Ons (XAU) – yine jsDelivr verisi
-    const xauRes = await fetchWithTimeout(
-      "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/xau.json"
-    );
-    const xauJson = await xauRes.json();
-    if(!xauJson || !xauJson.xau || !xauJson.xau.usd) throw new Error("XAU verisi boş");
+      if (prev) {
+        if (v > prev) e.className = "value up";
+        else if (v < prev) e.className = "value down";
+        else e.className = "value";
+      }
+    }
 
-    const xauUsd = xauJson.xau.usd;       // 1 XAU (ons) kaç USD
-    const gramAltin = (usdtry / xauUsd) / 31.1035; // 1 gram altın kaç TRY
+    function fetchWithTimeout(url, ms = 8000){
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal })
+        .finally(() => clearTimeout(t));
+    }
 
-    update("usd", usdtry);
-    update("eur", eurtry);
-    update("gbp", gbptry);
-    update("gold", gramAltin);
+    async function refresh(){
+      try{
+        // USD bazlı kurlar (TRY, EUR, GBP)
+        const usdRes = await fetchWithTimeout(
+          "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd.json"
+        );
+        const usdJson = await usdRes.json();
+        if (!usdJson || !usdJson.usd) throw new Error("USD verisi boş");
 
-    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
-  }catch(e){
-    console.error("Hata:", e);
-    el("time").textContent = "Veri alınamadı";
-  }
-}
+        const usdtry = usdJson.usd.try;   // 1 USD = ? TRY
+        const usdeur = usdJson.usd.eur;   // 1 USD = ? EUR
+        const usdgbp = usdJson.usd.gbp;   // 1 USD = ? GBP
 
-refresh();
-setInterval(refresh, 15000);
-</script>
+        const eurtry = usdtry / usdeur;   // 1 EUR = ? TRY
+        const gbptry = usdtry / usdgbp;   // 1 GBP = ? TRY
+
+        // Altın (XAU) verisi
+        const xauRes = await fetchWithTimeout(
+          "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/xau.json"
+        );
+        const xauJson = await xauRes.json();
+        if (!xauJson || !xauJson.xau || !xauJson.xau.usd) throw new Error("XAU verisi boş");
+
+        const xauUsd = xauJson.xau.usd;         // 1 XAU = ? USD
+        const gramAltin = (usdtry / xauUsd) / 31.1035;
+
+        update("usd", usdtry);
+        update("eur", eurtry);
+        update("gbp", gbptry);
+        update("gold", gramAltin);
+
+        el("time").textContent =
+          "Son güncelleme: " +
+          new Date().toLocaleTimeString("tr-TR", { hour12:false });
+      }catch(err){
+        console.error("Hata:", err);
+        el("time").textContent = "Veri alınamadı";
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 15000);
+  </script>
+</body>
+</html>
