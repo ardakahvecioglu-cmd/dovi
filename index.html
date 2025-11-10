@@ -5,63 +5,14 @@
   <meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
   <title>Canlı Kurlar</title>
   <style>
-    body{
-      margin:0;
-      background:#0f1115;
-      color:#fff;
-      font-family:Segoe UI,Roboto,Arial,sans-serif;
-      width:640px;
-      height:1152px;
-      overflow:hidden;
-      position:relative;
-    }
-    header{
-      text-align:center;
-      padding:25px 10px 5px;
-      font-size:28px;
-      font-weight:600;
-      color:#3aa0ff;
-    }
-    #time{
-      text-align:center;
-      font-size:13px;
-      color:#999;
-      margin-bottom:10px;
-    }
-    footer{
-      position:absolute;
-      bottom:0;
-      left:0;
-      width:100%;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:10px 15px;
-      background:rgba(0,0,0,0.8);
-      backdrop-filter:blur(8px);
-      border-top:1px solid #222;
-    }
-    .card{
-      flex:1;
-      text-align:center;
-      margin:0 5px;
-      background:#1a1f29;
-      border-radius:12px;
-      padding:8px 6px;
-      font-size:18px;
-    }
-    .label{
-      font-size:12px;
-      color:#aaa;
-      margin-bottom:4px;
-    }
-    .value{
-      font-weight:bold;
-      font-size:22px;
-      transition:color .3s;
-    }
-    .up{color:#18c964;}
-    .down{color:#ff4d4f;}
+    body{margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;width:640px;height:1152px;overflow:hidden;position:relative;}
+    header{text-align:center;padding:25px 10px 5px;font-size:28px;font-weight:600;color:#3aa0ff;}
+    #time{text-align:center;font-size:13px;color:#999;margin-bottom:10px;}
+    footer{position:absolute;bottom:0;left:0;width:100%;display:flex;justify-content:space-between;align-items:center;padding:10px 15px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);border-top:1px solid #222;}
+    .card{flex:1;text-align:center;margin:0 5px;background:#1a1f29;border-radius:12px;padding:8px 6px;font-size:18px;}
+    .label{font-size:12px;color:#aaa;margin-bottom:4px;}
+    .value{font-weight:bold;font-size:22px;transition:color .3s;}
+    .up{color:#18c964;} .down{color:#ff4d4f;}
   </style>
 </head>
 <body>
@@ -69,102 +20,79 @@
   <div id="time">Yükleniyor...</div>
 
   <footer>
-    <div class="card">
-      <div class="label">USD / TRY</div>
-      <div id="usd" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">EUR / TRY</div>
-      <div id="eur" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">GBP / TRY</div>
-      <div id="gbp" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">GRAM ALTIN</div>
-      <div id="gold" class="value">--</div>
-    </div>
+    <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
+    <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+    <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+    <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
   </footer>
 
-  <script>
-    const el = id => document.getElementById(id);
-    const last = {};
+<script>
+const el = id => document.getElementById(id);
+const last = {};
 
-    function update(id, val){
-      const e = el(id);
-      if (!e) return;
-      const v = parseFloat(val);
-      const prev = last[id];
-      last[id] = v;
+function update(id, val){
+  const e = el(id);
+  if(!e) return;
+  const v = parseFloat(val);
+  const prev = last[id];
+  last[id] = v;
+  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
+  if (prev !== undefined && !isNaN(v)) {
+    if (v > prev) e.className = "value up";
+    else if (v < prev) e.className = "value down";
+    else e.className = "value";
+  }
+}
 
-      e.textContent = isNaN(v) ? "--" : v.toFixed(2);
+function fetchWithTimeout(url, ms=8000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(()=>clearTimeout(t));
+}
 
-      if (prev !== undefined && !isNaN(v)) {
-        if (v > prev) e.className = "value up";
-        else if (v < prev) e.className = "value down";
-        else e.className = "value";
-      }
-    }
+async function refresh(){
+  try{
+    // 1) USD bazlı kurlar (currency dataset)
+    const usdRes = await fetchWithTimeout("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json");
+    const usdJson = await usdRes.json();
+    if(!usdJson || !usdJson.usd) throw new Error("USD verisi boş");
+    const r = usdJson.usd;
+    const usdtry = r.try;    // 1 USD = ? TRY
+    const usdeur = r.eur;    // 1 USD = ? EUR
+    const usdgbp = r.gbp;    // 1 USD = ? GBP
+    const eurtry = usdtry / usdeur;
+    const gbptry = usdtry / usdgbp;
 
-    function fetchWithTimeout(url, ms = 8000){
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), ms);
-      return fetch(url, { signal: ctrl.signal })
-        .finally(() => clearTimeout(t));
-    }
+    update("usd", usdtry);
+    update("eur", eurtry);
+    update("gbp", gbptry);
 
-    async function refresh(){
-      try{
-        // Tüm veriyi tek yerden çekiyoruz: usd.json
-        const res = await fetchWithTimeout(
-          "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
-        );
-        const data = await res.json();
-        if (!data || !data.usd) throw new Error("USD verisi boş");
+    // 2) Ons (XAU) fiyatı — canlı-ish endpoint
+    // Bu endpoint genelde güncel ons fiyatını verir: data-asg.goldprice.org/dbXRates/USD
+    const goldRes = await fetchWithTimeout("https://data-asg.goldprice.org/dbXRates/USD");
+    const goldJson = await goldRes.json();
+    // goldJson yapısı örnek: { items: [ { curr: "USD", xauPrice: 1950.12, ... } ], ... }
+    const onsUsd = goldJson && goldJson.items && goldJson.items[0] && goldJson.items[0].xauPrice;
+    if (!onsUsd || isNaN(onsUsd)) throw new Error("Ons verisi boş");
 
-        const r = data.usd;
+    // 1 XAU (ons) = onsUsd USD
+    // 1 USD = usdtry TRY
+    // 1 XAU = onsUsd * usdtry TRY
+    // 1 gram = (1 XAU TRY) / 31.1035
+    const xauTry = onsUsd * usdtry;
+    const gramAltin = xauTry / 31.1035;
 
-        // ----- DÖVİZLER -----
-        const usdtry = r.try;          // 1 USD = ? TRY
-        const usdeur = r.eur;          // 1 USD = ? EUR
-        const usdgbp = r.gbp;          // 1 USD = ? GBP
+    update("gold", gramAltin);
 
-        const eurtry = usdtry / usdeur; // 1 EUR = ? TRY
-        const gbptry = usdtry / usdgbp; // 1 GBP = ? TRY
+    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
+  }catch(err){
+    console.error("Hata:", err);
+    el("time").textContent = "Veri alınamadı";
+  }
+}
 
-        update("usd", usdtry);
-        update("eur", eurtry);
-        update("gbp", gbptry);
-
-        // ----- GRAM ALTIN -----
-        // Bu API'de xau oranı: 1 USD -> kaç XAU
-        // Dolayısıyla:
-        // 1 XAU (ons) = 1 / r.xau USD
-        // 1 XAU (ons) = (1 / r.xau) * usdtry TRY
-        // Gram altın = (1 XAU TRY) / 31.1035
-        let gramAltin = null;
-        if (r.xau && r.xau > 0) {
-          const usdToXau = r.xau;                // 1 USD = usdToXau XAU
-          const xauToUsd = 1 / usdToXau;        // 1 XAU = xauToUsd USD
-          const xauToTry = xauToUsd * usdtry;   // 1 XAU = ? TRY
-          gramAltin = xauToTry / 31.1035;       // 1 gram = ? TRY
-        }
-
-        // Eğer xau bilgisi yoksa gram altını boş bırak.
-        update("gold", gramAltin);
-
-        el("time").textContent =
-          "Son güncelleme: " +
-          new Date().toLocaleTimeString("tr-TR", { hour12:false });
-      }catch(err){
-        console.error("Hata:", err);
-        el("time").textContent = "Veri alınamadı";
-      }
-    }
-
-    refresh();
-    setInterval(refresh, 15000);
-  </script>
+refresh();
+setInterval(refresh, 15000);
+</script>
 </body>
 </html>
