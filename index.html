@@ -42,42 +42,4 @@ function update(id,val){
   const v = parseFloat(val);
   const prev = last[id];
   last[id] = v;
-  e.textContent = isNaN(v) ? "--" : v.toFixed(2);
-  if(prev){
-    if(v>prev) e.className="value up";
-    else if(v<prev) e.className="value down";
-    else e.className="value";
-  }
-}
-
-async function refresh(){
-  try{
-    // ✅ DOĞRU adres
-    const fxRes = await fetch("https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP,XAU");
-    const fxData = await fxRes.json();
-
-    if(!fxData || !fxData.rates) throw new Error("API response boş geldi");
-
-    const usdtry = 1 / fxData.rates.USD;
-    const eurtry = 1 / fxData.rates.EUR;
-    const gbptry = 1 / fxData.rates.GBP;
-    const usdToXau = 1 / fxData.rates.XAU;
-    const gramAltin = (usdtry * usdToXau) / 31.1035;
-
-    update("usd", usdtry);
-    update("eur", eurtry);
-    update("gbp", gbptry);
-    update("gold", gramAltin);
-
-    el("time").textContent = "Son güncelleme: " + new Date().toLocaleTimeString("tr-TR",{hour12:false});
-  }catch(e){
-    console.error("Hata:", e);
-    el("time").textContent="Veri alınamadı";
-  }
-}
-
-refresh();
-setInterval(refresh, 10000);
-</script>
-</body>
-</html>
+  e.textContent = isNaN(v) ? "--" : v.to
