@@ -88,79 +88,80 @@
   </footer>
 
   <script>
-  const el = id => document.getElementById(id);
-  const last = {};
+    const el = id => document.getElementById(id);
+    const last = {};
 
-  function update(id, val){
-    const e = el(id);
-    if (!e) return;
-    const v = parseFloat(val);
-    const prev = last[id];
-    last[id] = v;
+    function update(id, val){
+      const e = el(id);
+      if (!e) return;
+      const v = parseFloat(val);
+      const prev = last[id];
+      last[id] = v;
 
-    e.textContent = isNaN(v) ? "--" : v.toFixed(2);
+      e.textContent = isNaN(v) ? "--" : v.toFixed(2);
 
-    if (prev) {
-      if (v > prev) e.className = "value up";
-      else if (v < prev) e.className = "value down";
-      else e.className = "value";
+      if (prev !== undefined) {
+        if (v > prev) e.className = "value up";
+        else if (v < prev) e.className = "value down";
+        else e.className = "value";
+      }
     }
-  }
 
-  function fetchWithTimeout(url, ms = 8000){
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), ms);
-    return fetch(url, { signal: ctrl.signal })
-      .finally(() => clearTimeout(t));
-  }
-
-  async function refresh(){
-    try{
-      // USD bazlı kurlar
-      const usdRes = await fetchWithTimeout(
-        "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
-      );
-      const usdJson = await usdRes.json();
-      if (!usdJson || !usdJson.usd) throw new Error("USD verisi boş");
-
-      const rates = usdJson.usd;
-      const usdtry = rates.try;   // 1 USD = ? TRY
-      const usdeur = rates.eur;   // 1 USD = ? EUR
-      const usdgbp = rates.gbp;   // 1 USD = ? GBP
-
-      const eurtry = usdtry / usdeur;   // 1 EUR = ? TRY
-      const gbptry = usdtry / usdgbp;   // 1 GBP = ? TRY
-
-      // XAU (altın ons) verisi
-      const xauRes = await fetchWithTimeout(
-        "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xau.json"
-      );
-      const xauJson = await xauRes.json();
-      if (!xauJson || !xauJson.xau) throw new Error("XAU verisi boş");
-
-      // 1 XAU = ? TRY (direkt varsa onu kullan, yoksa USD üzerinden hesapla)
-      const xauTry = xauJson.xau.try || (xauJson.xau.usd * usdtry);
-
-      // 1 ons = 31.1035 gram
-      const gramAltin = xauTry / 31.1035;
-
-      update("usd", usdtry);
-      update("eur", eurtry);
-      update("gbp", gbptry);
-      update("gold", gramAltin);
-
-      el("time").textContent =
-        "Son güncelleme: " +
-        new Date().toLocaleTimeString("tr-TR", { hour12:false });
-    }catch(err){
-      console.error("Hata:", err);
-      el("time").textContent = "Veri alınamadı";
+    function fetchWithTimeout(url, ms = 8000){
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal })
+        .finally(() => clearTimeout(t));
     }
-  }
 
-  refresh();
-  setInterval(refresh, 15000);
-</script>
+    async function refresh(){
+      try{
+        // USD bazlı kurlar (güncel veriler)
+        const usdRes = await fetchWithTimeout(
+          "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
+        );
+        const usdJson = await usdRes.json();
+        if (!usdJson || !usdJson.usd) throw new Error("USD verisi boş");
 
+        const rates = usdJson.usd;
+        const usdtry = rates.try;   // 1 USD = ? TRY
+        const usdeur = rates.eur;   // 1 USD = ? EUR
+        const usdgbp = rates.gbp;   // 1 USD = ? GBP
+
+        const eurtry = usdtry / usdeur;   // 1 EUR = ? TRY
+        const gbptry = usdtry / usdgbp;   // 1 GBP = ? TRY
+
+        // XAU (Altın ons) verisi
+        const xauRes = await fetchWithTimeout(
+          "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xau.json"
+        );
+        const xauJson = await xauRes.json();
+        if (!xauJson || !xauJson.xau) throw new Error("XAU verisi boş");
+
+        // 1 XAU = ? TRY (direkt varsa onu kullan, yoksa USD üzerinden hesapla)
+        const xauTry = xauJson.xau.try
+          ? xauJson.xau.try
+          : xauJson.xau.usd * usdtry;
+
+        // 1 ons = 31.1035 gram → gram altın
+        const gramAltin = xauTry / 31.1035;
+
+        update("usd", usdtry);
+        update("eur", eurtry);
+        update("gbp", gbptry);
+        update("gold", gramAltin);
+
+        el("time").textContent =
+          "Son güncelleme: " +
+          new Date().toLocaleTimeString("tr-TR", { hour12:false });
+      }catch(err){
+        console.error("Hata:", err);
+        el("time").textContent = "Veri alınamadı";
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 15000);
+  </script>
 </body>
 </html>
