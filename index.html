@@ -15,9 +15,14 @@
       overflow:hidden;
       position:relative;
     }
+    /* Başlık + zaman: footer'ın hemen üstünde, ortalanmış */
     header{
+      position:absolute;
+      left:0;
+      bottom:95px; /* footer yüksekliğinin biraz üstü */
+      width:100%;
       text-align:center;
-      padding:25px 10px 5px;
+      padding:0 10px 5px;
       font-size:28px;
       font-weight:600;
       color:#3aa0ff;
@@ -29,6 +34,7 @@
       margin-left:12px;
       font-weight:400;
     }
+
     footer{
       position:absolute;
       bottom:0;
@@ -66,7 +72,7 @@
   </style>
 </head>
 <body>
-  <!-- Başlık + zaman tek satır -->
+  <!-- Kartların hemen üstünde gösterilecek satır -->
   <header>
     💱 Canlı Kurlar
     <span id="time">Yükleniyor...</span>
@@ -138,7 +144,7 @@
         update("eur", eurtry);
         update("gbp", gbptry);
 
-        // Ons altın (neredeyse canlı)
+        // Ons altın → gram altın
         const goldRes = await fetchWithTimeout(
           "https://data-asg.goldprice.org/dbXRates/USD"
         );
@@ -146,12 +152,8 @@
         const onsUsd = goldJson && goldJson.items && goldJson.items[0] && goldJson.items[0].xauPrice;
         if (!onsUsd || isNaN(onsUsd)) throw new Error("Ons verisi boş");
 
-        // 1 XAU (ons) = onsUsd USD
-        // 1 USD = usdtry TRY
-        // 1 XAU = onsUsd * usdtry TRY
-        // 1 gram = (1 XAU TRY) / 31.1035
-        const xauTry = onsUsd * usdtry;
-        const gramAltin = xauTry / 31.1035;
+        const xauTry = onsUsd * usdtry;        // 1 ons = onsUsd USD → TRY
+        const gramAltin = xauTry / 31.1035;    // 1 gram
 
         update("gold", gramAltin);
 
