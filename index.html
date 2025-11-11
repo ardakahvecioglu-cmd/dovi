@@ -16,7 +16,7 @@
       position:relative;
     }
 
-    /* Başlık + zaman: kartların hemen üstünde, SOLA yaslı */
+    /* Başlık + zaman: kartların hemen üstünde, sola yaslı */
     header{
       position:absolute;
       left:15px;
@@ -76,7 +76,7 @@
   </style>
 </head>
 <body>
-  <!-- Sola yaslı: 💱 Canlı Kurlar Son güncelleme: 00:12:31 -->
+
   <header>
     💱 Canlı Kurlar
     <span id="time">Yükleniyor...</span>
@@ -108,6 +108,7 @@
     function update(id, val){
       const e = el(id);
       if(!e) return;
+
       const v = parseFloat(val);
       const prev = last[id];
       last[id] = v;
@@ -115,16 +116,19 @@
       e.textContent = isNaN(v) ? "--" : v.toFixed(2);
 
       if (prev !== undefined && !isNaN(v)) {
-        if (v > prev) e.className = "value up";
-        else if (v < prev) e.className = "value down";
-        else e.className = "value";
+        const diff = v - prev;
+        // Çok küçük farklarda bile renk değiştir (0.0005 üstü)
+        if (Math.abs(diff) > 0.0005) {
+          if (diff > 0) e.className = "value up";
+          else if (diff < 0) e.className = "value down";
+        }
       }
     }
 
     function fetchWithTimeout(url, ms=8000){
       const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), ms);
-      return fetch(url, { signal: ctrl.signal }).finally(()=>clearTimeout(t));
+      const t = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
     }
 
     async function refresh(){
@@ -137,9 +141,9 @@
         if(!usdJson || !usdJson.usd) throw new Error("USD verisi boş");
 
         const r = usdJson.usd;
-        const usdtry = r.try;   // 1 USD = ? TRY
-        const usdeur = r.eur;   // 1 USD = ? EUR
-        const usdgbp = r.gbp;   // 1 USD = ? GBP
+        const usdtry = r.try;  // 1 USD = ? TRY
+        const usdeur = r.eur;  // 1 USD = ? EUR
+        const usdgbp = r.gbp;  // 1 USD = ? GBP
 
         const eurtry = usdtry / usdeur;   // 1 EUR = ? TRY
         const gbptry = usdtry / usdgbp;   // 1 GBP = ? TRY
@@ -156,8 +160,8 @@
         const onsUsd = goldJson && goldJson.items && goldJson.items[0] && goldJson.items[0].xauPrice;
         if (!onsUsd || isNaN(onsUsd)) throw new Error("Ons verisi boş");
 
-        const xauTry = onsUsd * usdtry;        // 1 ons = onsUsd USD → TRY
-        const gramAltin = xauTry / 31.1035;    // 1 gram
+        const xauTry = onsUsd * usdtry;
+        const gramAltin = xauTry / 31.1035;
 
         update("gold", gramAltin);
 
@@ -169,6 +173,18 @@
         el("time").textContent = "Son güncelleme: veri alınamadı";
       }
     }
+
+    // Konsola son değerleri yazdır (debug amaçlı)
+    setInterval(() => {
+      console.log(
+        "[DEBUG]",
+        new Date().toLocaleTimeString("tr-TR",{hour12:false}),
+        "| USD:", el("usd").textContent,
+        "EUR:", el("eur").textContent,
+        "GBP:", el("gbp").textContent,
+        "ALTIN:", el("gold").textContent
+      );
+    }, 15000);
 
     refresh();
     setInterval(refresh, 15000);
