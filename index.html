@@ -104,6 +104,9 @@
   <script>
     const el = id => document.getElementById(id);
 
+    // Open Exchange Rates app id
+    const OER_APP_ID = "af378514a745468fbc35c3978d7b7b9a";
+
     // Bellekte tutulan son gerçek değerler
     const cache = {
       usd: null,
@@ -166,6 +169,8 @@
           t.textContent =
             "Son güncelleme: " +
             lastRealUpdate.toLocaleTimeString("tr-TR", { hour12:false });
+        } else {
+          t.textContent = "Son güncelleme: veri alınamadı";
         }
       }
     }
@@ -179,10 +184,10 @@
 
     async function fetchRates(){
       try {
-        // Open Exchange Rates - saatlik güncel veriler (Free plan)
+        // Open Exchange Rates - saatlik güncel veriler
         const oerUrl =
           "https://openexchangerates.org/api/latest.json" +
-          "?app_id=YOUR_APP_ID&symbols=EUR,GBP,TRY";
+          "?app_id=" + OER_APP_ID + "&symbols=EUR,GBP,TRY";
 
         const usdRes = await fetchWithTimeout(oerUrl, 8000);
         if (!usdRes.ok) throw new Error("Kur isteği başarısız: " + usdRes.status);
@@ -195,16 +200,16 @@
         if (!r.TRY || !r.EUR || !r.GBP)
           throw new Error("Beklenen kurlar eksik (TRY/EUR/GBP)");
 
-        // Open Exchange Rates base = USD
-        const usdtry = r.TRY;              // 1 USD = ? TRY
-        const eurtry = r.TRY / r.EUR;      // 1 EUR = ? TRY
-        const gbptry = r.TRY / r.GBP;      // 1 GBP = ? TRY
+        // base = USD
+        const usdtry = r.TRY;             // 1 USD = ? TRY
+        const eurtry = r.TRY / r.EUR;     // 1 EUR = ? TRY
+        const gbptry = r.TRY / r.GBP;     // 1 GBP = ? TRY
 
         applyChange("usd", usdtry);
         applyChange("eur", eurtry);
         applyChange("gbp", gbptry);
 
-        // Ons altın → gram altın (aynı anda, saatlik)
+        // Ons altın → gram altın
         const goldRes = await fetchWithTimeout(
           "https://data-asg.goldprice.org/dbXRates/USD",
           8000
@@ -237,7 +242,7 @@
     // İlk yüklemede veriyi çek
     fetchRates();
 
-    // 15 sn'de bir ekrandaki değerleri cache'ten yenile (yeni istek yok)
+    // 15 sn'de bir ekrandaki değerleri cache'ten yenile
     setInterval(refreshDisplay, 15000);
 
     // Kurları her saatte bir yeniden API'den çek
