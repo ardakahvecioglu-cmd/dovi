@@ -16,27 +16,21 @@
       position:relative;
     }
 
-    /* Başlık + zaman: kartların hemen üstünde, sola yaslı */
+    /* Sadece güncelleme zamanı, sola yaslı */
     header{
       position:absolute;
       left:15px;
       right:15px;
       bottom:95px;
       padding:0 0 5px;
-      font-size:28px;
-      font-weight:600;
-      color:#3aa0ff;
+      font-size:18px;
+      font-weight:400;
+      color:#bbb;
       display:flex;
       align-items:baseline;
       gap:10px;
       text-align:left;
       white-space:nowrap;
-    }
-    header #time{
-      font-size:14px;
-      color:#bbb;
-      font-weight:400;
-      margin-left:0;
     }
 
     footer{
@@ -77,8 +71,8 @@
 </head>
 <body>
 
+  <!-- Üstte sadece API zamanına göre güncelleme bilgisi -->
   <header>
-    💱 Canlı Kurlar
     <span id="time">Yükleniyor...</span>
   </header>
 
@@ -118,7 +112,7 @@
     // Yükseldi / düştü kıyası için önceki değerler
     const last = {};
 
-    // Gerçek API çağrısının zamanı
+    // Gerçek API verisinin zaman damgası (OER timestamp)
     let lastRealUpdate = null;
 
     function applyChange(id, val){
@@ -149,7 +143,7 @@
       }
     }
 
-    // 15 sn'de bir: sadece cache'teki değeri göster, renk ve zaman sabit
+    // 15 sn'de bir: sadece cache'teki değeri göster, zaman aynı kalır
     function refreshDisplay(){
       ["usd","eur","gbp","gold"].forEach(id => {
         const e = el(id);
@@ -158,7 +152,6 @@
         if (v == null || isNaN(v)) {
           if (e.textContent.trim() === "") e.textContent = "--";
         } else {
-          // sadece yazıyı yenile, class'a dokunma
           e.textContent = v.toFixed(2);
         }
       });
@@ -229,8 +222,13 @@
 
         applyChange("gold", gramAltin);
 
-        // Gerçek güncelleme zamanı
-        lastRealUpdate = new Date();
+        // OER timestamp → gerçek veri güncelleme zamanı
+        if (usdJson.timestamp) {
+          lastRealUpdate = new Date(usdJson.timestamp * 1000);
+        } else {
+          lastRealUpdate = new Date();
+        }
+
         refreshDisplay();
       } catch (err) {
         console.error("Hata:", err);
