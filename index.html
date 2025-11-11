@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Canlı Kurlar</title>
   <style>
     body{
@@ -10,13 +10,13 @@
       background:#0f1115;
       color:#fff;
       font-family:Segoe UI,Roboto,Arial,sans-serif;
-      width:640px;
-      height:1152px;
+      width:100vw;
+      height:100vh;
       overflow:hidden;
       position:relative;
     }
 
-    /* Sadece güncelleme zamanı, sola yaslı */
+    /* Üstte sadece güncelleme zamanı, sola yaslı */
     header{
       position:absolute;
       left:15px;
@@ -45,7 +45,9 @@
       background:rgba(0,0,0,0.8);
       backdrop-filter:blur(8px);
       border-top:1px solid #222;
+      box-sizing:border-box;
     }
+
     .card{
       flex:1;
       text-align:center;
@@ -54,24 +56,27 @@
       border-radius:12px;
       padding:8px 6px;
       font-size:18px;
+      box-sizing:border-box;
     }
+
     .label{
       font-size:12px;
       color:#aaa;
       margin-bottom:4px;
     }
+
     .value{
       font-weight:bold;
       font-size:22px;
       transition:color .3s;
     }
+
     .up{color:#18c964;}
     .down{color:#ff4d4f;}
   </style>
 </head>
 <body>
 
-  <!-- Üstte sadece API zamanına göre güncelleme bilgisi -->
   <header>
     <span id="time">Yükleniyor...</span>
   </header>
