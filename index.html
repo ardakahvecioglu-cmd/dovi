@@ -51,16 +51,8 @@
       font-size: 18px;
       box-sizing: border-box;
     }
-    .label {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 4px;
-    }
-    .value {
-      font-weight: bold;
-      font-size: 22px;
-      transition: color 0.3s;
-    }
+    .label { font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    .value { font-weight: bold; font-size: 22px; transition: color 0.3s; }
     .up { color: #18c964; }
     .down { color: #ff4d4f; }
   </style>
@@ -83,7 +75,7 @@
     const last = {};
     let lastRealUpdate = null;
 
-    // Açılışta localStorage'dan veri yükle
+    // Sayfa açılışında localStorage'dan veri yükle
     window.addEventListener("load", () => {
       const stored = JSON.parse(localStorage.getItem("lastData") || "{}");
       if (stored.usd) cache.usd = stored.usd;
@@ -93,18 +85,22 @@
       if (stored.time) lastRealUpdate = new Date(stored.time);
       refreshDisplay();
 
-      // Eğer hiç veri yoksa bir defa zorla fetch yap
-      if (!stored.usd || !stored.eur || !stored.gbp || !stored.gold) {
-        console.log("Hiç veri bulunamadı, ilk fetch zorunlu yapılıyor...");
-        fetchRates(true); // forced = true
+      // Veri yoksa dövizleri bir defa zorla çek
+      if (!stored.usd || !stored.eur || !stored.gbp) {
+        console.log("İlk veri yok, döviz fetch yapılıyor...");
+        fetchRates(true);
       }
     });
 
     function applyChange(id, val) {
-      const e = el(id); if (!e) return;
+      const e = el(id);
+      if (!e) return;
       const v = parseFloat(val);
       if (isNaN(v)) { e.textContent = "--"; e.className = "value"; cache[id] = null; return; }
-      const prev = last[id]; last[id] = v; cache[id] = v; e.textContent = v.toFixed(2);
+      const prev = last[id];
+      last[id] = v;
+      cache[id] = v;
+      e.textContent = v.toFixed(2);
       if (prev !== undefined && !isNaN(prev)) {
         if (v > prev) e.className = "value up";
         else if (v < prev) e.className = "value down";
@@ -114,14 +110,15 @@
 
     function refreshDisplay() {
       ["usd", "eur", "gbp", "gold"].forEach(id => {
-        const e = el(id); if (!e) return; const v = cache[id];
-        if (v == null || isNaN(v)) { if (e.textContent.trim() === "") e.textContent = "--"; }
+        const e = el(id);
+        if (!e) return;
+        const v = cache[id];
+        if (v == null || isNaN(v)) e.textContent = "--";
         else e.textContent = v.toFixed(2);
       });
-      if (lastRealUpdate) {
+      if (lastRealUpdate)
         el("time").textContent = "Son güncelleme: " +
           lastRealUpdate.toLocaleTimeString("tr-TR", { hour12: false });
-      }
     }
 
     function fetchWithTimeout(url, ms = 8000) {
@@ -130,58 +127,61 @@
       return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
     }
 
+    // DÖVİZ (saatte 1)
     async function fetchRates(forced = false) {
       try {
         const lastCall = parseInt(localStorage.getItem("lastFetchTime") || "0", 10);
         const now = Date.now();
-
-        // 1 saatten az geçmişse ve zorunlu değilse atla
         if (!forced && now - lastCall < 3600000) {
           console.log("API çağrısı atlandı (1 saat dolmadı)");
           return;
         }
 
-        console.log("API çağrısı yapılıyor...");
         const oerUrl = `https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
         const usdRes = await fetchWithTimeout(oerUrl, 8000);
         if (!usdRes.ok) throw new Error("Kur isteği başarısız: " + usdRes.status);
         const usdJson = await usdRes.json();
         const r = usdJson.rates;
-        if (!r.TRY || !r.EUR || !r.GBP) throw new Error("Beklenen kurlar eksik");
-
         const usdtry = r.TRY, eurtry = r.TRY / r.EUR, gbptry = r.TRY / r.GBP;
         applyChange("usd", usdtry);
         applyChange("eur", eurtry);
         applyChange("gbp", gbptry);
 
+        lastRealUpdate = usdJson.timestamp ? new Date(usdJson.timestamp * 1000) : new Date();
+        localStorage.setItem("lastFetchTime", now.toString());
+        localStorage.setItem("lastData", JSON.stringify({
+          usd: cache.usd, eur: cache.eur, gbp: cache.gbp,
+          gold: cache.gold, time: lastRealUpdate
+        }));
+        refreshDisplay();
+      } catch (err) {
+        console.error("Döviz hatası:", err);
+      }
+    }
+
+    // ALTIN (her 15 saniyede bir)
+    async function refreshGold() {
+      try {
+        if (!cache.usd) return; // USD olmadan hesap yapılamaz
         const goldRes = await fetchWithTimeout("https://data-asg.goldprice.org/dbXRates/USD", 8000);
         if (!goldRes.ok) throw new Error("Altın isteği başarısız: " + goldRes.status);
         const goldJson = await goldRes.json();
         const onsUsd = goldJson?.items?.[0]?.xauPrice;
         if (!onsUsd || isNaN(onsUsd)) throw new Error("Ons verisi boş");
-        const xauTry = onsUsd * usdtry;
-        const gramAltin = xauTry / 31.1035;
+        const gramAltin = (onsUsd * cache.usd) / 31.1035;
         applyChange("gold", gramAltin);
-
-        lastRealUpdate = usdJson.timestamp ? new Date(usdJson.timestamp * 1000) : new Date();
-        localStorage.setItem("lastFetchTime", now.toString());
         localStorage.setItem("lastData", JSON.stringify({
-          usd: cache.usd,
-          eur: cache.eur,
-          gbp: cache.gbp,
-          gold: cache.gold,
-          time: lastRealUpdate
+          ...cache, time: lastRealUpdate
         }));
-        refreshDisplay();
       } catch (err) {
-        console.error("Hata:", err);
-        el("time").textContent = "Son güncelleme: veri alınamadı";
+        console.error("Altın hatası:", err);
       }
     }
 
-    // Sürekli çalışan döngüler
-    setInterval(refreshDisplay, 15000); // 15 sn’de bir ekrandaki değerleri yenile
-    setInterval(() => fetchRates(false), 60 * 60 * 1000); // 1 saatte bir dene (koruma aktif)
+    // Başlat
+    setInterval(refreshDisplay, 15000);
+    setInterval(() => fetchRates(false), 60 * 60 * 1000); // döviz her saat
+    setInterval(refreshGold, 15000); // altın her 15 saniyede bir
   </script>
 </body>
 </html>
