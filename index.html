@@ -5,251 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Canlı Kurlar</title>
   <style>
-    body{
-      margin:0;
-      background:#0f1115;
-      color:#fff;
-      font-family:Segoe UI,Roboto,Arial,sans-serif;
-      width:100vw;
-      height:100vh;
-      overflow:hidden;
-      position:relative;
-    }
-
-    /* Üstte sadece güncelleme zamanı, sola yaslı */
-    header{
-      position:absolute;
-      left:15px;
-      right:15px;
-      bottom:95px;
-      padding:0 0 5px;
-      font-size:18px;
-      font-weight:400;
-      color:#bbb;
-      display:flex;
-      align-items:baseline;
-      gap:10px;
-      text-align:left;
-      white-space:nowrap;
-    }
-
-    footer{
-      position:absolute;
-      bottom:0;
-      left:0;
-      width:100%;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:10px 15px;
-      background:rgba(0,0,0,0.8);
-      backdrop-filter:blur(8px);
-      border-top:1px solid #222;
-      box-sizing:border-box;
-    }
-
-    .card{
-      flex:1;
-      text-align:center;
-      margin:0 5px;
-      background:#1a1f29;
-      border-radius:12px;
-      padding:8px 6px;
-      font-size:18px;
-      box-sizing:border-box;
-    }
-
-    .label{
-      font-size:12px;
-      color:#aaa;
-      margin-bottom:4px;
-    }
-
-    .value{
-      font-weight:bold;
-      font-size:22px;
-      transition:color .3s;
-    }
-
-    .up{color:#18c964;}
-    .down{color:#ff4d4f;}
+    body{margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
+      width:100vw;height:100vh;overflow:hidden;position:relative;}
+    header{position:absolute;left:15px;right:15px;bottom:95px;padding:0 0 5px;font-size:18px;
+      font-weight:400;color:#bbb;text-align:left;white-space:nowrap;}
+    footer{position:absolute;bottom:0;left:0;width:100%;display:flex;justify-content:space-between;
+      align-items:center;padding:10px 15px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);
+      border-top:1px solid #222;box-sizing:border-box;}
+    .card{flex:1;text-align:center;margin:0 5px;background:#1a1f29;border-radius:12px;padding:8px 6px;
+      font-size:18px;box-sizing:border-box;}
+    .label{font-size:12px;color:#aaa;margin-bottom:4px;}
+    .value{font-weight:bold;font-size:22px;transition:color .3s;}
+    .up{color:#18c964;}.down{color:#ff4d4f;}
   </style>
 </head>
 <body>
-
-  <header>
-    <span id="time">Yükleniyor...</span>
-  </header>
+  <header><span id="time">Yükleniyor...</span></header>
 
   <footer>
-    <div class="card">
-      <div class="label">USD / TRY</div>
-      <div id="usd" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">EUR / TRY</div>
-      <div id="eur" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">GBP / TRY</div>
-      <div id="gbp" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">GRAM ALTIN</div>
-      <div id="gold" class="value">--</div>
-    </div>
+    <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
+    <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+    <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+    <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
   </footer>
 
   <script>
-    const el = id => document.getElementById(id);
+    const el=id=>document.getElementById(id);
+    const OER_APP_ID="af378514a745468fbc35c3978d7b7b9a";
+    const cache={usd:null,eur:null,gbp:null,gold:null};
+    const last={};
+    let lastRealUpdate=null;
+    let lastFetchedHour=null; // saatlik kontrol
 
-    // Open Exchange Rates app id
-    const OER_APP_ID = "af378514a745468fbc35c3978d7b7b9a";
-
-    // Bellekte tutulan son gerçek değerler
-    const cache = {
-      usd: null,
-      eur: null,
-      gbp: null,
-      gold: null
-    };
-
-    // Yükseldi / düştü kıyası için önceki değerler
-    const last = {};
-
-    // Gerçek API verisinin zaman damgası (OER timestamp)
-    let lastRealUpdate = null;
-
-    function applyChange(id, val){
-      const e = el(id);
-      if (!e) return;
-
-      const v = parseFloat(val);
-      if (isNaN(v)) {
-        e.textContent = "--";
-        e.className = "value";
-        cache[id] = null;
-        return;
-      }
-
-      const prev = last[id];
-      last[id] = v;
-      cache[id] = v;
-
-      e.textContent = v.toFixed(2);
-
-      // Yalnızca gerçek güncellemede renk veriyoruz
-      if (prev !== undefined && !isNaN(prev)) {
-        if (v > prev) e.className = "value up";
-        else if (v < prev) e.className = "value down";
-        else e.className = "value";
-      } else {
-        e.className = "value";
-      }
+    function applyChange(id,val){
+      const e=el(id); if(!e)return;
+      const v=parseFloat(val); if(isNaN(v)){e.textContent="--";e.className="value";cache[id]=null;return;}
+      const prev=last[id]; last[id]=v; cache[id]=v; e.textContent=v.toFixed(2);
+      if(prev!==undefined&&!isNaN(prev)){
+        if(v>prev)e.className="value up";
+        else if(v<prev)e.className="value down";
+        else e.className="value";
+      } else e.className="value";
     }
 
-    // 15 sn'de bir: sadece cache'teki değeri göster, zaman aynı kalır
     function refreshDisplay(){
-      ["usd","eur","gbp","gold"].forEach(id => {
-        const e = el(id);
-        if (!e) return;
-        const v = cache[id];
-        if (v == null || isNaN(v)) {
-          if (e.textContent.trim() === "") e.textContent = "--";
-        } else {
-          e.textContent = v.toFixed(2);
-        }
+      ["usd","eur","gbp","gold"].forEach(id=>{
+        const e=el(id); if(!e)return; const v=cache[id];
+        if(v==null||isNaN(v)){if(e.textContent.trim()==="")e.textContent="--";}
+        else e.textContent=v.toFixed(2);
       });
-
-      const t = el("time");
-      if (t) {
-        if (lastRealUpdate) {
-          t.textContent =
-            "Son güncelleme: " +
-            lastRealUpdate.toLocaleTimeString("tr-TR", { hour12:false });
-        } else {
-          t.textContent = "Son güncelleme: veri alınamadı";
-        }
+      if(lastRealUpdate){
+        el("time").textContent="Son güncelleme: "+
+          lastRealUpdate.toLocaleTimeString("tr-TR",{hour12:false});
       }
     }
 
-    function fetchWithTimeout(url, ms=8000){
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), ms);
-      return fetch(url, { signal: ctrl.signal })
-        .finally(() => clearTimeout(t));
+    function fetchWithTimeout(url,ms=8000){
+      const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),ms);
+      return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(t));
     }
 
     async function fetchRates(){
-      try {
-        // Open Exchange Rates - saatlik güncel veriler
-        const oerUrl =
-          "https://openexchangerates.org/api/latest.json" +
-          "?app_id=" + OER_APP_ID + "&symbols=EUR,GBP,TRY";
-
-        const usdRes = await fetchWithTimeout(oerUrl, 8000);
-        if (!usdRes.ok) throw new Error("Kur isteği başarısız: " + usdRes.status);
-
-        const usdJson = await usdRes.json();
-        if (!usdJson || !usdJson.rates) throw new Error("Kur verisi boş");
-
-        const r = usdJson.rates;
-
-        if (!r.TRY || !r.EUR || !r.GBP)
-          throw new Error("Beklenen kurlar eksik (TRY/EUR/GBP)");
-
-        // base = USD
-        const usdtry = r.TRY;             // 1 USD = ? TRY
-        const eurtry = r.TRY / r.EUR;     // 1 EUR = ? TRY
-        const gbptry = r.TRY / r.GBP;     // 1 GBP = ? TRY
-
-        applyChange("usd", usdtry);
-        applyChange("eur", eurtry);
-        applyChange("gbp", gbptry);
-
-        // Ons altın → gram altın
-        const goldRes = await fetchWithTimeout(
-          "https://data-asg.goldprice.org/dbXRates/USD",
-          8000
-        );
-        if (!goldRes.ok) throw new Error("Altın isteği başarısız: " + goldRes.status);
-
-        const goldJson = await goldRes.json();
-        const onsUsd = goldJson &&
-                       goldJson.items &&
-                       goldJson.items[0] &&
-                       goldJson.items[0].xauPrice;
-
-        if (!onsUsd || isNaN(onsUsd)) throw new Error("Ons verisi boş");
-
-        const xauTry = onsUsd * usdtry;
-        const gramAltin = xauTry / 31.1035;
-
-        applyChange("gold", gramAltin);
-
-        // OER timestamp → gerçek veri güncelleme zamanı
-        if (usdJson.timestamp) {
-          lastRealUpdate = new Date(usdJson.timestamp * 1000);
-        } else {
-          lastRealUpdate = new Date();
+      try{
+        const now=new Date(); const currentHour=now.getHours();
+        if(currentHour===lastFetchedHour){ // aynı saat içinde ikinci kez deneme olmasın
+          console.log("Bu saat zaten veri çekilmiş, atlandı.");
+          return;
         }
+        lastFetchedHour=currentHour;
 
+        const oerUrl=`https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
+        const usdRes=await fetchWithTimeout(oerUrl,8000);
+        if(!usdRes.ok)throw new Error("Kur isteği başarısız: "+usdRes.status);
+        const usdJson=await usdRes.json();
+        if(!usdJson||!usdJson.rates)throw new Error("Kur verisi boş");
+        const r=usdJson.rates;
+        if(!r.TRY||!r.EUR||!r.GBP)throw new Error("Beklenen kurlar eksik");
+
+        const usdtry=r.TRY, eurtry=r.TRY/r.EUR, gbptry=r.TRY/r.GBP;
+        applyChange("usd",usdtry); applyChange("eur",eurtry); applyChange("gbp",gbptry);
+
+        const goldRes=await fetchWithTimeout("https://data-asg.goldprice.org/dbXRates/USD",8000);
+        if(!goldRes.ok)throw new Error("Altın isteği başarısız: "+goldRes.status);
+        const goldJson=await goldRes.json();
+        const onsUsd=goldJson?.items?.[0]?.xauPrice;
+        if(!onsUsd||isNaN(onsUsd))throw new Error("Ons verisi boş");
+        const xauTry=onsUsd*usdtry; const gramAltin=xauTry/31.1035;
+        applyChange("gold",gramAltin);
+
+        lastRealUpdate=usdJson.timestamp?new Date(usdJson.timestamp*1000):new Date();
         refreshDisplay();
-      } catch (err) {
-        console.error("Hata:", err);
-        const t = el("time");
-        if (t) t.textContent = "Son güncelleme: veri alınamadı";
+      }catch(err){
+        console.error("Hata:",err);
+        el("time").textContent="Son güncelleme: veri alınamadı";
       }
     }
 
-    // İlk yüklemede veriyi çek
-    fetchRates();
-
-    // 15 sn'de bir ekrandaki değerleri cache'ten yenile
-    setInterval(refreshDisplay, 15000);
-
-    // Kurları her saatte bir yeniden API'den çek
-    setInterval(fetchRates, 60 * 60 * 1000);
+    fetchRates(); // ilk başta 1 kez
+    setInterval(refreshDisplay,15000); // sadece ekran tazele
+    setInterval(fetchRates,60*60*1000); // her saat başı veri çek
   </script>
 </body>
 </html>
