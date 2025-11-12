@@ -35,7 +35,6 @@
     const cache={usd:null,eur:null,gbp:null,gold:null};
     const last={};
     let lastRealUpdate=null;
-    let lastFetchedHour=null; // saatlik kontrol
 
     function applyChange(id,val){
       const e=el(id); if(!e)return;
@@ -67,12 +66,13 @@
 
     async function fetchRates(){
       try{
-        const now=new Date(); const currentHour=now.getHours();
-        if(currentHour===lastFetchedHour){ // aynı saat içinde ikinci kez deneme olmasın
-          console.log("Bu saat zaten veri çekilmiş, atlandı.");
+        // localStorage koruması (1 saat = 3600000 ms)
+        const lastCall=parseInt(localStorage.getItem("lastFetchTime")||"0",10);
+        const now=Date.now();
+        if(now-lastCall<3600000){ // 1 saat geçmemişse atla
+          console.log("API çağrısı atlandı (1 saat dolmadı)");
           return;
         }
-        lastFetchedHour=currentHour;
 
         const oerUrl=`https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
         const usdRes=await fetchWithTimeout(oerUrl,8000);
@@ -94,6 +94,7 @@
         applyChange("gold",gramAltin);
 
         lastRealUpdate=usdJson.timestamp?new Date(usdJson.timestamp*1000):new Date();
+        localStorage.setItem("lastFetchTime",now.toString()); // son çağrı zamanı kaydı
         refreshDisplay();
       }catch(err){
         console.error("Hata:",err);
@@ -101,9 +102,9 @@
       }
     }
 
-    fetchRates(); // ilk başta 1 kez
-    setInterval(refreshDisplay,15000); // sadece ekran tazele
-    setInterval(fetchRates,60*60*1000); // her saat başı veri çek
+    fetchRates(); // sayfa açıldığında kontrol ederek çalışır
+    setInterval(refreshDisplay,15000); // 15 sn'de bir ekran tazele
+    setInterval(fetchRates,60*60*1000); // 1 saatte bir dene (koruma yine devrede)
   </script>
 </body>
 </html>
