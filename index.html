@@ -5,21 +5,68 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Canlı Kurlar</title>
   <style>
-    body{margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
-      width:100vw;height:100vh;overflow:hidden;position:relative;}
-    header{position:absolute;left:15px;right:15px;bottom:95px;padding:0 0 5px;font-size:18px;
-      font-weight:400;color:#bbb;text-align:left;white-space:nowrap;}
-    footer{position:absolute;bottom:0;left:0;width:100%;display:flex;justify-content:space-between;
-      align-items:center;padding:10px 15px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);
-      border-top:1px solid #222;box-sizing:border-box;}
-    .card{flex:1;text-align:center;margin:0 5px;background:#1a1f29;border-radius:12px;padding:8px 6px;
-      font-size:18px;box-sizing:border-box;}
-    .label{font-size:12px;color:#aaa;margin-bottom:4px;}
-    .value{font-weight:bold;font-size:22px;transition:color .3s;}
-    .up{color:#18c964;}.down{color:#ff4d4f;}
+    body {
+      margin: 0;
+      background: #0f1115;
+      color: #fff;
+      font-family: Segoe UI, Roboto, Arial, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+    header {
+      position: absolute;
+      left: 15px;
+      right: 15px;
+      bottom: 95px;
+      padding: 0 0 5px;
+      font-size: 18px;
+      font-weight: 400;
+      color: #bbb;
+      text-align: left;
+      white-space: nowrap;
+    }
+    footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid #222;
+      box-sizing: border-box;
+    }
+    .card {
+      flex: 1;
+      text-align: center;
+      margin: 0 5px;
+      background: #1a1f29;
+      border-radius: 12px;
+      padding: 8px 6px;
+      font-size: 18px;
+      box-sizing: border-box;
+    }
+    .label {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+    .value {
+      font-weight: bold;
+      font-size: 22px;
+      transition: color 0.3s;
+    }
+    .up { color: #18c964; }
+    .down { color: #ff4d4f; }
   </style>
 </head>
 <body>
+
   <header><span id="time">Yükleniyor...</span></header>
 
   <footer>
@@ -30,81 +77,102 @@
   </footer>
 
   <script>
-    const el=id=>document.getElementById(id);
-    const OER_APP_ID="af378514a745468fbc35c3978d7b7b9a";
-    const cache={usd:null,eur:null,gbp:null,gold:null};
-    const last={};
-    let lastRealUpdate=null;
+    const el = id => document.getElementById(id);
+    const OER_APP_ID = "af378514a745468fbc35c3978d7b7b9a";
+    const cache = { usd: null, eur: null, gbp: null, gold: null };
+    const last = {};
+    let lastRealUpdate = null;
 
-    function applyChange(id,val){
-      const e=el(id); if(!e)return;
-      const v=parseFloat(val); if(isNaN(v)){e.textContent="--";e.className="value";cache[id]=null;return;}
-      const prev=last[id]; last[id]=v; cache[id]=v; e.textContent=v.toFixed(2);
-      if(prev!==undefined&&!isNaN(prev)){
-        if(v>prev)e.className="value up";
-        else if(v<prev)e.className="value down";
-        else e.className="value";
-      } else e.className="value";
+    // Sayfa açılışında önce localStorage’daki verileri yükle
+    window.addEventListener("load", () => {
+      const stored = JSON.parse(localStorage.getItem("lastData") || "{}");
+      if (stored.usd) cache.usd = stored.usd;
+      if (stored.eur) cache.eur = stored.eur;
+      if (stored.gbp) cache.gbp = stored.gbp;
+      if (stored.gold) cache.gold = stored.gold;
+      if (stored.time) lastRealUpdate = new Date(stored.time);
+      refreshDisplay();
+    });
+
+    function applyChange(id, val) {
+      const e = el(id); if (!e) return;
+      const v = parseFloat(val);
+      if (isNaN(v)) { e.textContent = "--"; e.className = "value"; cache[id] = null; return; }
+      const prev = last[id]; last[id] = v; cache[id] = v; e.textContent = v.toFixed(2);
+      if (prev !== undefined && !isNaN(prev)) {
+        if (v > prev) e.className = "value up";
+        else if (v < prev) e.className = "value down";
+        else e.className = "value";
+      } else e.className = "value";
     }
 
-    function refreshDisplay(){
-      ["usd","eur","gbp","gold"].forEach(id=>{
-        const e=el(id); if(!e)return; const v=cache[id];
-        if(v==null||isNaN(v)){if(e.textContent.trim()==="")e.textContent="--";}
-        else e.textContent=v.toFixed(2);
+    function refreshDisplay() {
+      ["usd", "eur", "gbp", "gold"].forEach(id => {
+        const e = el(id); if (!e) return; const v = cache[id];
+        if (v == null || isNaN(v)) { if (e.textContent.trim() === "") e.textContent = "--"; }
+        else e.textContent = v.toFixed(2);
       });
-      if(lastRealUpdate){
-        el("time").textContent="Son güncelleme: "+
-          lastRealUpdate.toLocaleTimeString("tr-TR",{hour12:false});
+      if (lastRealUpdate) {
+        el("time").textContent = "Son güncelleme: " +
+          lastRealUpdate.toLocaleTimeString("tr-TR", { hour12: false });
       }
     }
 
-    function fetchWithTimeout(url,ms=8000){
-      const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),ms);
-      return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(t));
+    function fetchWithTimeout(url, ms = 8000) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
     }
 
-    async function fetchRates(){
-      try{
-        // localStorage koruması (1 saat = 3600000 ms)
-        const lastCall=parseInt(localStorage.getItem("lastFetchTime")||"0",10);
-        const now=Date.now();
-        if(now-lastCall<3600000){ // 1 saat geçmemişse atla
+    async function fetchRates() {
+      try {
+        const lastCall = parseInt(localStorage.getItem("lastFetchTime") || "0", 10);
+        const now = Date.now();
+        if (now - lastCall < 3600000) { // 1 saat geçmediyse atla
           console.log("API çağrısı atlandı (1 saat dolmadı)");
           return;
         }
 
-        const oerUrl=`https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
-        const usdRes=await fetchWithTimeout(oerUrl,8000);
-        if(!usdRes.ok)throw new Error("Kur isteği başarısız: "+usdRes.status);
-        const usdJson=await usdRes.json();
-        if(!usdJson||!usdJson.rates)throw new Error("Kur verisi boş");
-        const r=usdJson.rates;
-        if(!r.TRY||!r.EUR||!r.GBP)throw new Error("Beklenen kurlar eksik");
+        const oerUrl = `https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
+        const usdRes = await fetchWithTimeout(oerUrl, 8000);
+        if (!usdRes.ok) throw new Error("Kur isteği başarısız: " + usdRes.status);
+        const usdJson = await usdRes.json();
+        const r = usdJson.rates;
+        if (!r.TRY || !r.EUR || !r.GBP) throw new Error("Beklenen kurlar eksik");
 
-        const usdtry=r.TRY, eurtry=r.TRY/r.EUR, gbptry=r.TRY/r.GBP;
-        applyChange("usd",usdtry); applyChange("eur",eurtry); applyChange("gbp",gbptry);
+        const usdtry = r.TRY, eurtry = r.TRY / r.EUR, gbptry = r.TRY / r.GBP;
+        applyChange("usd", usdtry);
+        applyChange("eur", eurtry);
+        applyChange("gbp", gbptry);
 
-        const goldRes=await fetchWithTimeout("https://data-asg.goldprice.org/dbXRates/USD",8000);
-        if(!goldRes.ok)throw new Error("Altın isteği başarısız: "+goldRes.status);
-        const goldJson=await goldRes.json();
-        const onsUsd=goldJson?.items?.[0]?.xauPrice;
-        if(!onsUsd||isNaN(onsUsd))throw new Error("Ons verisi boş");
-        const xauTry=onsUsd*usdtry; const gramAltin=xauTry/31.1035;
-        applyChange("gold",gramAltin);
+        const goldRes = await fetchWithTimeout("https://data-asg.goldprice.org/dbXRates/USD", 8000);
+        if (!goldRes.ok) throw new Error("Altın isteği başarısız: " + goldRes.status);
+        const goldJson = await goldRes.json();
+        const onsUsd = goldJson?.items?.[0]?.xauPrice;
+        if (!onsUsd || isNaN(onsUsd)) throw new Error("Ons verisi boş");
+        const xauTry = onsUsd * usdtry;
+        const gramAltin = xauTry / 31.1035;
+        applyChange("gold", gramAltin);
 
-        lastRealUpdate=usdJson.timestamp?new Date(usdJson.timestamp*1000):new Date();
-        localStorage.setItem("lastFetchTime",now.toString()); // son çağrı zamanı kaydı
+        lastRealUpdate = usdJson.timestamp ? new Date(usdJson.timestamp * 1000) : new Date();
+        localStorage.setItem("lastFetchTime", now.toString());
+        localStorage.setItem("lastData", JSON.stringify({
+          usd: cache.usd,
+          eur: cache.eur,
+          gbp: cache.gbp,
+          gold: cache.gold,
+          time: lastRealUpdate
+        }));
         refreshDisplay();
-      }catch(err){
-        console.error("Hata:",err);
-        el("time").textContent="Son güncelleme: veri alınamadı";
+      } catch (err) {
+        console.error("Hata:", err);
+        el("time").textContent = "Son güncelleme: veri alınamadı";
       }
     }
 
-    fetchRates(); // sayfa açıldığında kontrol ederek çalışır
-    setInterval(refreshDisplay,15000); // 15 sn'de bir ekran tazele
-    setInterval(fetchRates,60*60*1000); // 1 saatte bir dene (koruma yine devrede)
+    fetchRates(); // ilk açılışta
+    setInterval(refreshDisplay, 15000); // 15 sn’de bir görüntü yenile
+    setInterval(fetchRates, 60 * 60 * 1000); // her saat dene (koruma devrede)
   </script>
 </body>
 </html>
