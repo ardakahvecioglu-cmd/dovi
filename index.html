@@ -83,7 +83,7 @@
     const last = {};
     let lastRealUpdate = null;
 
-    // Sayfa açılışında önce localStorage’daki verileri yükle
+    // Açılışta localStorage'dan veri yükle
     window.addEventListener("load", () => {
       const stored = JSON.parse(localStorage.getItem("lastData") || "{}");
       if (stored.usd) cache.usd = stored.usd;
@@ -92,6 +92,12 @@
       if (stored.gold) cache.gold = stored.gold;
       if (stored.time) lastRealUpdate = new Date(stored.time);
       refreshDisplay();
+
+      // Eğer hiç veri yoksa bir defa zorla fetch yap
+      if (!stored.usd || !stored.eur || !stored.gbp || !stored.gold) {
+        console.log("Hiç veri bulunamadı, ilk fetch zorunlu yapılıyor...");
+        fetchRates(true); // forced = true
+      }
     });
 
     function applyChange(id, val) {
@@ -124,15 +130,18 @@
       return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
     }
 
-    async function fetchRates() {
+    async function fetchRates(forced = false) {
       try {
         const lastCall = parseInt(localStorage.getItem("lastFetchTime") || "0", 10);
         const now = Date.now();
-        if (now - lastCall < 3600000) { // 1 saat geçmediyse atla
+
+        // 1 saatten az geçmişse ve zorunlu değilse atla
+        if (!forced && now - lastCall < 3600000) {
           console.log("API çağrısı atlandı (1 saat dolmadı)");
           return;
         }
 
+        console.log("API çağrısı yapılıyor...");
         const oerUrl = `https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
         const usdRes = await fetchWithTimeout(oerUrl, 8000);
         if (!usdRes.ok) throw new Error("Kur isteği başarısız: " + usdRes.status);
@@ -170,9 +179,9 @@
       }
     }
 
-    fetchRates(); // ilk açılışta
-    setInterval(refreshDisplay, 15000); // 15 sn’de bir görüntü yenile
-    setInterval(fetchRates, 60 * 60 * 1000); // her saat dene (koruma devrede)
+    // Sürekli çalışan döngüler
+    setInterval(refreshDisplay, 15000); // 15 sn’de bir ekrandaki değerleri yenile
+    setInterval(() => fetchRates(false), 60 * 60 * 1000); // 1 saatte bir dene (koruma aktif)
   </script>
 </body>
 </html>
