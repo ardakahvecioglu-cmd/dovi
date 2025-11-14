@@ -74,7 +74,7 @@
     const last = {};
     let lastRealUpdate = null;
 
-    /** EKRANA YAZDIRMA **/
+    /* EKRANA YAZDIRMA */
     function updateValue(id, val) {
       const e = el(id);
       if (!e) return;
@@ -96,18 +96,22 @@
       }
     }
 
+    /* ZAMAN GÜNCELLE */
     function showTime() {
       if (!lastRealUpdate) return;
-      el("time").textContent = "Son güncelleme: " +
+      el("time").textContent =
+        "Son güncelleme: " +
         lastRealUpdate.toLocaleTimeString("tr-TR", { hour12: false });
     }
 
     setInterval(showTime, 1000);
 
-    /** DÖVİZ (OpenExchange – saatlik) **/
+    /* DÖVİZ (OpenExchange — saatlik) */
     async function fetchRates() {
       try {
-        const url = `https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
+        const url =
+          `https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
+
         const res = await fetch(url);
         const json = await res.json();
 
@@ -125,13 +129,12 @@
         updateValue("gbp", gbptry);
 
         lastRealUpdate = new Date(json.timestamp * 1000);
-
       } catch (e) {
         console.log("Döviz alınamadı:", e);
       }
     }
 
-    /** ALTIN (15 saniyede bir – truncgil embed, CORS yok) **/
+    /* ALTIN (15 saniyede bir — truncgil embed) */
     async function fetchGold() {
       try {
         const proxy = "https://api.allorigins.win/raw?url=";
@@ -145,24 +148,22 @@
           return;
         }
 
-        const metal = json["Gram Altın"];
-        const alis = parseFloat(metal.Alış.replace(",", "."));
+        const gram = parseFloat(json["Gram Altın"].Alış.replace(",", "."));
 
-        if (!isNaN(alis)) {
-          cache.gold = alis;
-          updateValue("gold", alis);
+        if (!isNaN(gram)) {
+          cache.gold = gram;
+          updateValue("gold", gram);
         }
-
       } catch (e) {
         console.log("Altın alınamadı:", e);
       }
     }
 
-    /** Başlat **/
-    fetchRates();                 // döviz ilk yükleme
-    fetchGold();                  // altın ilk yükleme
-    setInterval(fetchRates, 3600000); // 1 saat
-    setInterval(fetchGold, 15000);    // 15 sn
+    /* BAŞLAT */
+    fetchRates();                     // döviz ilk yükleme
+    fetchGold();                      // altın ilk yükleme
+    setInterval(fetchRates, 3600000); // döviz 1 saatte bir
+    setInterval(fetchGold, 15000);    // altın 15 sn’de bir
   </script>
 
 </body>
