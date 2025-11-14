@@ -8,19 +8,26 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch raw response (debug)
+      - name: Fetch gold price from goldprice.org
         run: |
-          RESP=$(curl -s "https://query1.finance.yahoo.com/v10/finance/quoteSummary/GC=F?modules=price")
-          echo "$RESP" > api/ons.json
+          RESP=$(curl -s "https://data-asg.goldprice.org/dbXRates/USD")
+          ONS=$(echo "$RESP" | sed -n 's/.*"xauPrice":\s*\([0-9.]*\).*/\1/p')
+
+          if [ -z "$ONS" ]; then
+            echo "{ \"gold\": null }" > api/ons.json
+          else
+            echo "{ \"gold\": $ONS }" > api/ons.json
+          fi
 
       - name: Commit & Push
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
           git add api/ons.json
-          git commit -m "Debug ons raw" || echo "No changes"
+          git commit -m "Update ons price" || echo "No changes"
           git push
