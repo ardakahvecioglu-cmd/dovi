@@ -1,87 +1,216 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
-<title>Canlı Kurlar</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
+  <title>Canlı Kurlar</title>
 
-<style>
-body{
-  margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
-  width:640px;height:1152px;overflow:hidden;position:relative;
-}
-header{text-align:center;padding:25px 10px 5px;font-size:28px;font-weight:600;color:#3aa0ff;}
-#time{text-align:center;font-size:13px;color:#999;margin-bottom:10px;}
-footer{
-  position:absolute;bottom:0;left:0;width:100%;
-  display:flex;justify-content:space-between;align-items:center;
-  padding:10px 15px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);border-top:1px solid #222;
-}
-.card{
-  flex:1;text-align:center;margin:0 5px;background:#1a1f29;
-  border-radius:12px;padding:8px 5px;font-size:18px;
-}
-.value{font-size:24px;font-weight:600;margin-top:4px;color:#3aa0ff;}
-</style>
-
-</head>
-<body>
-
-<header>💱 Canlı Kurlar</header>
-<div id="time">Son güncelleme: --:--:--</div>
-
-<footer>
-  <div class="card"><div>USD / TRY</div><div id="usd" class="value">--</div></div>
-  <div class="card"><div>EUR / TRY</div><div id="eur" class="value">--</div></div>
-  <div class="card"><div>GBP / TRY</div><div id="gbp" class="value">--</div></div>
-  <div class="card"><div>GRAM ALTIN</div><div id="gram" class="value">--</div></div>
-</footer>
-
-<script>
-async function fetchData(){
-  try {
-    // TCMB Döviz XML verisi
-    const tcmbRes = await fetch("https://www.tcmb.gov.tr/kurlar/today.xml");
-    const tcmbText = await tcmbRes.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(tcmbText, "text/xml");
-
-    function getRate(code){
-      const entry = xml.querySelector(`Currency[Kod="${code}"]`);
-      return parseFloat(entry.querySelector("ForexSelling").textContent.replace(",", "."));
+  <style>
+    body {
+      margin: 0;
+      background: #0f1115;
+      color: #fff;
+      font-family: Segoe UI, Roboto, Arial, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
     }
 
-    const usd = getRate("USD");
-    const eur = getRate("EUR");
-    const gbp = getRate("GBP");
+    header {
+      position: absolute;
+      left: 15px;
+      right: 15px;
+      bottom: 95px;
+      padding: 0 0 5px;
+      font-size: 18px;
+      font-weight: 400;
+      color: #bbb;
+      text-align: left;
+      white-space: nowrap;
+    }
 
-    // Ons Altın Fiyatı (CORS açık ve ücretsiz)
-    const metalRes = await fetch("https://api.metals.live/v1/spot");
-    const metalData = await metalRes.json();
-    const ons = metalData[0].gold; // USD cinsinden ons altın
+    footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid #222;
+      box-sizing: border-box;
+    }
 
-    const gram = (ons * usd) / 31.1035;
+    .card {
+      flex: 1;
+      text-align: center;
+      margin: 0 5px;
+      background: #1a1f29;
+      border-radius: 12px;
+      padding: 8px 6px;
+      font-size: 18px;
+      box-sizing: border-box;
+    }
 
-    document.getElementById("usd").textContent = usd.toFixed(2);
-    document.getElementById("eur").textContent = eur.toFixed(2);
-    document.getElementById("gbp").textContent = gbp.toFixed(2);
-    document.getElementById("gram").textContent = gram.toFixed(2);
+    .label {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
 
-    // Saat
-    const now = new Date();
-    document.getElementById("time").textContent =
-      "Son güncelleme: " + now.toLocaleTimeString("tr-TR");
+    .value {
+      font-weight: bold;
+      font-size: 22px;
+      transition: color 0.3s;
+    }
 
-  } catch(err){
-    console.error("Hata:", err);
-  }
-}
+    .up { color: #18c964; }
+    .down { color: #ff4d4f; }
+  </style>
+</head>
 
-// İlk çalıştırma
-fetchData();
-// Her 30 saniyede bir güncelle
-setInterval(fetchData, 30000);
-</script>
+<body>
+
+  <header><span id="time">Yükleniyor...</span></header>
+
+  <footer>
+    <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
+    <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+    <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+    <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+  </footer>
+
+  <script>
+    var el = function(id) { return document.getElementById(id); };
+    var cache = { usd: null, eur: null, gbp: null, gold: null };
+    var last = {};
+    var lastRealUpdate = null;
+
+    function safeLoadStorage() {
+      try {
+        return JSON.parse(localStorage.getItem("lastData") || "{}");
+      } catch (e) { return {}; }
+    }
+
+    function refreshDisplay() {
+      ["usd", "eur", "gbp", "gold"].forEach(function(id) {
+        var v = cache[id];
+        el(id).textContent = (v == null || isNaN(v)) ? "--" : v.toFixed(2);
+      });
+
+      if (lastRealUpdate) {
+        el("time").textContent =
+          "Son güncelleme: " +
+          lastRealUpdate.toLocaleTimeString("tr-TR", { hour12: false });
+      }
+    }
+
+    function applyChange(id, val) {
+      var e = el(id);
+      var v = Number(val);
+      if (!v) return;
+
+      var prev = last[id];
+      last[id] = v;
+      cache[id] = v;
+
+      e.textContent = v.toFixed(2);
+
+      if (prev) {
+        if (v > prev) e.className = "value up";
+        else if (v < prev) e.className = "value down";
+        else e.className = "value";
+      } else {
+        e.className = "value";
+      }
+    }
+
+    function fetchJSON(url, cb, errcb) {
+      var done = false;
+
+      fetch(url)
+        .then(function(r) {
+          if (!r.ok) throw new Error(r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          if (!done) { done = true; cb(data); }
+        })
+        .catch(function() {
+          if (!done) { done = true; errcb(); }
+        });
+
+      setTimeout(function() {
+        if (!done) { done = true; errcb(); }
+      }, 8000);
+    }
+
+    function fetchRates() {
+      fetchJSON(
+        "https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP",
+        function(data) {
+          var r = data.rates;
+
+          applyChange("usd", 1 / r.USD);
+          applyChange("eur", 1 / r.EUR);
+          applyChange("gbp", 1 / r.GBP);
+
+          lastRealUpdate = new Date();
+          localStorage.setItem("lastData",
+            JSON.stringify({ ...cache, time: lastRealUpdate })
+          );
+
+          refreshDisplay();
+        },
+        function() {
+          console.log("Döviz isteği başarısız");
+        }
+      );
+    }
+
+    function fetchGold() {
+      if (!cache.usd) return;
+
+      fetchJSON(
+        "https://api.metals.live/v1/spot",
+        function(data) {
+          var ons = data[0].gold;
+          var gram = (ons * cache.usd) / 31.1035;
+          applyChange("gold", gram);
+
+          localStorage.setItem("lastData",
+            JSON.stringify({ ...cache, time: lastRealUpdate })
+          );
+        },
+        function() {
+          console.log("Altın isteği başarısız");
+        }
+      );
+    }
+
+    window.addEventListener("load", function() {
+      var stored = safeLoadStorage();
+
+      cache.usd = stored.usd || null;
+      cache.eur = stored.eur || null;
+      cache.gbp = stored.gbp || null;
+      cache.gold = stored.gold || null;
+
+      lastRealUpdate = stored.time ? new Date(stored.time) : null;
+
+      refreshDisplay();
+      fetchRates();
+      fetchGold();
+    });
+
+    setInterval(fetchGold, 15000);
+    setInterval(fetchRates, 3600000);
+    setInterval(refreshDisplay, 15000);
+  </script>
 
 </body>
 </html>
