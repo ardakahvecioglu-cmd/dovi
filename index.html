@@ -96,11 +96,26 @@
       } catch (e) { return {}; }
     }
 
+    function saveStorage() {
+      var obj = {
+        usd: cache.usd,
+        eur: cache.eur,
+        gbp: cache.gbp,
+        gold: cache.gold,
+        time: lastRealUpdate
+      };
+      try {
+        localStorage.setItem("lastData", JSON.stringify(obj));
+      } catch (e) {}
+    }
+
     function refreshDisplay() {
-      ["usd", "eur", "gbp", "gold"].forEach(function(id) {
+      var ids = ["usd", "eur", "gbp", "gold"];
+      for (var i = 0; i < ids.length; i++) {
+        var id = ids[i];
         var v = cache[id];
         el(id).textContent = (v == null || isNaN(v)) ? "--" : v.toFixed(2);
-      });
+      }
 
       if (lastRealUpdate) {
         el("time").textContent =
@@ -129,7 +144,7 @@
       }
     }
 
-    // Eski tarayıcı uyumlu fetch wrapper
+    // Basit fetch wrapper (timeout'lu)
     function fetchJSON(url, cb, errcb) {
       var done = false;
 
@@ -155,17 +170,22 @@
       fetchJSON(
         "https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP",
         function(data) {
-          var r = data.rates;
+          var r = data && data.rates ? data.rates : null;
+          if (!r) return;
 
-          applyChange("usd", 1 / r.USD);
-          applyChange("eur", 1 / r.EUR);
-          applyChange("gbp", 1 / r.GBP);
+          var usdTry = 1 / r.USD;
+          var eurTry = 1 / r.EUR;
+          var gbpTry = 1 / r.GBP;
+
+          applyChange("usd", usdTry);
+          applyChange("eur", eurTry);
+          applyChange("gbp", gbpTry);
 
           lastRealUpdate = new Date();
-          localStorage.setItem("lastData",
-            JSON.stringify({ ...cache, time: lastRealUpdate })
-          );
+          // USD güncellenince altını da USD'den hesapla
+          computeGoldFromUsd();
 
+          saveStorage();
           refreshDisplay();
         },
         function() {
@@ -174,56 +194,32 @@
       );
     }
 
-    // ALTIN → commodities-api (CORS + DNS garantili)
-    function fetchGold() {
+    // Gram altın = USDTRY * 0.058 (yaklaşık piyasaya denk)
+    function computeGoldFromUsd() {
       if (!cache.usd) return;
-
-      fetchJSON(
-        "https://commodities-api.com/api/latest?access_key=demo&symbols=XAU",
-        function(data) {
-          try {
-            var onsUsd = data.data.rates.XAU;   // XAU = 1 Ons
-
-            if (!onsUsd || onsUsd <= 0) throw "xau-yok";
-
-            var gram = (onsUsd * cache.usd) / 31.1035;
-
-            applyChange("gold", gram);
-
-            localStorage.setItem("lastData",
-              JSON.stringify({ ...cache, time: lastRealUpdate })
-            );
-          }
-          catch(e) {
-            console.log("Altın veri hatası:", e);
-          }
-        },
-        function() {
-          console.log("Altın isteği zaman aşımı");
-        }
-      );
+      var gram = cache.usd * 0.058;
+      applyChange("gold", gram);
+      saveStorage();
     }
 
     // SAYFA AÇILIŞI
     window.addEventListener("load", function() {
       var stored = safeLoadStorage();
 
-      cache.usd = stored.usd || null;
-      cache.eur = stored.eur || null;
-      cache.gbp = stored.gbp || null;
-      cache.gold = stored.gold || null;
-
-      lastRealUpdate = stored.time ? new Date(stored.time) : null;
+      if (stored.usd) cache.usd = stored.usd;
+      if (stored.eur) cache.eur = stored.eur;
+      if (stored.gbp) cache.gbp = stored.gbp;
+      if (stored.gold) cache.gold = stored.gold;
+      if (stored.time) lastRealUpdate = new Date(stored.time);
 
       refreshDisplay();
-      fetchRates();
-      fetchGold();
+      fetchRates();      // ilk döviz çek
+      computeGoldFromUsd(); // varsa kayıttan altın göster
     });
 
-    // GÜNCELLEME ARALIKLARI
-    setInterval(fetchGold, 15000);
-    setInterval(fetchRates, 3600000);
-    setInterval(refreshDisplay, 15000);
+    // GÜNCELLEMELER
+    setInterval(fetchRates, 3600000);     // döviz her 1 saatte bir
+    setInterval(refreshDisplay, 15000);   // ekranda yazıyı tazele (saat vs değiştirmek istersen)
   </script>
 
 </body>
