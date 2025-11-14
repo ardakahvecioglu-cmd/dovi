@@ -8,29 +8,19 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch Yahoo Finance Gold ONS price
+      - name: Fetch raw response (debug)
         run: |
-          # Yahoo Finance API (ons altın)
-          RESP=$(curl -s "https://query1.finance.yahoo.com/v8/finance/chart/GC=F")
-          # JSON içinden regularMarketPrice değerini çekiyoruz:
-          ONS=$(echo "$RESP" | sed -n 's/.*"regularMarketPrice":\s*\([0-9.]*\).*/\1/p')
-          
-          # Hata kontrolü: Eğer ONS boşsa "null" yazılmasın
-          if [ -z "$ONS" ]; then
-            echo "{ \"gold\": null }" > api/ons.json
-          else
-            echo "{ \"gold\": $ONS }" > api/ons.json
-          fi
+          RESP=$(curl -s "https://query1.finance.yahoo.com/v10/finance/quoteSummary/GC=F?modules=price")
+          echo "$RESP" > api/ons.json
 
       - name: Commit & Push
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
           git add api/ons.json
-          git commit -m "Update ons price" || echo "No changes"
+          git commit -m "Debug ons raw" || echo "No changes"
           git push
