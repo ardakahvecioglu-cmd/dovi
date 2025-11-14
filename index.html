@@ -63,33 +63,32 @@
 </footer>
 
 <script>
-// ------------------------------------------------------
-// GLOBAL DEĞİŞKENLER
-// ------------------------------------------------------
-var last = {};
+// -------------------- GLOBAL DEĞİŞKENLER --------------------
+var last  = {};
 var cache = { usd: null, eur: null, gbp: null, gold: null };
-var OER_KEY = "7ac0eb5b948f4a4e9e929a3164e3808a"; // SENİN USD API KEY'İN
+var OER_KEY = "7ac0eb5b948f4a4e9e929a3164e3808a"; // senin OER key'in
 
-// ------------------------------------------------------
-// EKRANA DEĞER YAZAN FONKSİYON
-// ------------------------------------------------------
+// -------------------- EKRANI GÜNCELLEYEN FONKSİYON --------------------
 function updateValue(id, val) {
   var e = document.getElementById(id);
+  if (!e) return;
+
   var prev = last[id];
   last[id] = val;
   cache[id] = val;
+
   e.innerHTML = val.toFixed(2);
 
   if (prev !== undefined) {
-    if (val > prev) e.className = "value up";
+    if (val > prev)      e.className = "value up";
     else if (val < prev) e.className = "value down";
-    else e.className = "value";
+    else                 e.className = "value";
+  } else {
+    e.className = "value";
   }
 }
 
-// ------------------------------------------------------
-// KLASİK ES5 UYUMLU JSON İSTEĞİ
-// ------------------------------------------------------
+// -------------------- ES5 UYUMLU JSON İSTEĞİ --------------------
 function fetchJSON(url, callback) {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", url, true);
@@ -97,29 +96,38 @@ function fetchJSON(url, callback) {
     if (xhr.readyState === 4) {
       if (xhr.status === 200) {
         try {
-          callback(JSON.parse(xhr.responseText));
+          var data = JSON.parse(xhr.responseText);
+          callback(data);
         } catch (e) {
           console.log("JSON parse hatası:", e);
         }
+      } else {
+        console.log("İstek hatası:", url, xhr.status);
       }
     }
   };
   xhr.send();
 }
 
-// ------------------------------------------------------
-// DÖVİZ — OpenExchangeRates (saatte 1)
-// ------------------------------------------------------
+// -------------------- DÖVİZ (OER) --------------------
 function loadRates() {
   var url =
     "https://openexchangerates.org/api/latest.json?app_id=" +
     OER_KEY +
     "&symbols=EUR,GBP,TRY";
 
-  fetchJSON(url, function (res) {
-    if (!res || !res.rates) return;
+  fetchJSON(url, function(res) {
+    if (!res || !res.rates) {
+      console.log("OER verisi eksik:", res);
+      return;
+    }
 
     var r = res.rates;
+    if (!r.TRY || !r.EUR || !r.GBP) {
+      console.log("OER oranları eksik:", r);
+      return;
+    }
+
     updateValue("usd", r.TRY);
     updateValue("eur", r.TRY / r.EUR);
     updateValue("gbp", r.TRY / r.GBP);
@@ -130,34 +138,48 @@ function loadRates() {
   });
 }
 
-// ------------------------------------------------------
-// ALTIN — GENELPARA (15 SANİYEDE 1)
-// ------------------------------------------------------
+// -------------------- ALTIN (XAU→USD→GRAM TL) --------------------
 function refreshGold() {
-  fetchJSON("https://api.genelpara.com/embed/altin.json", function (res) {
-    try {
-      var ga = res.GA; // GA = Gram Altın
-      if (!ga) return;
+  // USD/TRY henüz gelmediyse altın hesaplamayalım
+  if (!cache.usd) return;
 
-      var satis = parseFloat(ga.satis.replace(",", "."));
-      if (!isNaN(satis)) {
-        updateValue("gold", satis);
+  var url = "https://api.exchangerate.host/convert?from=XAU&to=USD&amount=1";
+
+  fetchJSON(url, function(res) {
+    try {
+      if (!res || res.success === false) {
+        console.log("Altın verisi eksik:", res);
+        return;
       }
+
+      var info = res.info || {};
+      var onsUsd = parseFloat(info.rate);
+
+      if (isNaN(onsUsd)) {
+        console.log("Ons USD sayı değil:", info.rate);
+        return;
+      }
+
+      // 1 ons = 31.1035 gram
+      var gramUsd = onsUsd / 31.1035;
+      var gramTry = gramUsd * cache.usd;
+
+      updateValue("gold", gramTry);
     } catch (e) {
       console.log("Altın parse hatası:", e);
     }
   });
 }
 
-// ------------------------------------------------------
-// BAŞLAT
-// ------------------------------------------------------
-loadRates();
-refreshGold();
+// -------------------- BAŞLAT --------------------
+loadRates();      // sayfa açılır açılmaz döviz
+refreshGold();    // ve altın denemesi
 
-setInterval(loadRates, 60 * 60 * 1000);   // döviz 1 saatte 1
-setInterval(refreshGold, 15000);          // altın 15 saniyede 1
+// Döviz: saatte 1
+setInterval(loadRates, 60 * 60 * 1000);
 
+// Altın: 60 saniyede 1 (istersen 15000 yapıp 15 sn'ye çekebilirsin)
+setInterval(refreshGold, 60000);
 </script>
 
 </body>
