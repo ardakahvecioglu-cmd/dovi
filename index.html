@@ -1,170 +1,87 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Canlı Kurlar</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=640, initial-scale=1, user-scalable=no" />
+<title>Canlı Kurlar</title>
 
-  <style>
-    body {
-      margin: 0;
-      background: #0f1115;
-      color: #fff;
-      font-family: Segoe UI, Roboto, Arial, sans-serif;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      position: relative;
-    }
+<style>
+body{
+  margin:0;background:#0f1115;color:#fff;font-family:Segoe UI,Roboto,Arial,sans-serif;
+  width:640px;height:1152px;overflow:hidden;position:relative;
+}
+header{text-align:center;padding:25px 10px 5px;font-size:28px;font-weight:600;color:#3aa0ff;}
+#time{text-align:center;font-size:13px;color:#999;margin-bottom:10px;}
+footer{
+  position:absolute;bottom:0;left:0;width:100%;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 15px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);border-top:1px solid #222;
+}
+.card{
+  flex:1;text-align:center;margin:0 5px;background:#1a1f29;
+  border-radius:12px;padding:8px 5px;font-size:18px;
+}
+.value{font-size:24px;font-weight:600;margin-top:4px;color:#3aa0ff;}
+</style>
 
-    header {
-      position: absolute;
-      left: 15px;
-      bottom: 95px;
-      font-size: 15px;
-      color: #bbb;
-    }
-
-    footer {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 15px;
-      background: rgba(0, 0, 0, 0.8);
-      border-top: 1px solid #222;
-      box-sizing: border-box;
-    }
-
-    .card {
-      flex: 1;
-      text-align: center;
-      margin: 0 5px;
-      background: #1a1f29;
-      border-radius: 12px;
-      padding: 8px 6px;
-      box-sizing: border-box;
-    }
-
-    .label { font-size: 12px; color: #aaa; margin-bottom: 4px; }
-    .value { font-size: 22px; font-weight: bold; transition: color .3s; }
-    .up { color: #18c964; }
-    .down { color: #ff4d4f; }
-  </style>
 </head>
-
 <body>
 
-  <header><span id="time">Yükleniyor...</span></header>
+<header>💱 Canlı Kurlar</header>
+<div id="time">Son güncelleme: --:--:--</div>
 
-  <footer>
-    <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
-    <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
-    <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
-    <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
-  </footer>
+<footer>
+  <div class="card"><div>USD / TRY</div><div id="usd" class="value">--</div></div>
+  <div class="card"><div>EUR / TRY</div><div id="eur" class="value">--</div></div>
+  <div class="card"><div>GBP / TRY</div><div id="gbp" class="value">--</div></div>
+  <div class="card"><div>GRAM ALTIN</div><div id="gram" class="value">--</div></div>
+</footer>
 
-  <script>
-    const el = id => document.getElementById(id);
-    const OER_APP_ID = "7ac0eb5b948f4a4e9e929a3164e3808a";
+<script>
+async function fetchData(){
+  try {
+    // TCMB Döviz XML verisi
+    const tcmbRes = await fetch("https://www.tcmb.gov.tr/kurlar/today.xml");
+    const tcmbText = await tcmbRes.text();
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(tcmbText, "text/xml");
 
-    const cache = { usd: null, eur: null, gbp: null, gold: null };
-    const last = {};
-    let lastRealUpdate = null;
-
-    /* EKRANA YAZDIRMA */
-    function updateValue(id, val) {
-      const e = el(id);
-      if (!e) return;
-
-      if (val == null || isNaN(val)) {
-        e.textContent = "--";
-        return;
-      }
-
-      const prev = last[id];
-      last[id] = val;
-
-      e.textContent = val.toFixed(2);
-
-      if (prev !== undefined) {
-        if (val > prev) e.className = "value up";
-        else if (val < prev) e.className = "value down";
-        else e.className = "value";
-      }
+    function getRate(code){
+      const entry = xml.querySelector(`Currency[Kod="${code}"]`);
+      return parseFloat(entry.querySelector("ForexSelling").textContent.replace(",", "."));
     }
 
-    /* ZAMAN GÜNCELLE */
-    function showTime() {
-      if (!lastRealUpdate) return;
-      el("time").textContent =
-        "Son güncelleme: " +
-        lastRealUpdate.toLocaleTimeString("tr-TR", { hour12: false });
-    }
+    const usd = getRate("USD");
+    const eur = getRate("EUR");
+    const gbp = getRate("GBP");
 
-    setInterval(showTime, 1000);
+    // Ons Altın Fiyatı (CORS açık ve ücretsiz)
+    const metalRes = await fetch("https://api.metals.live/v1/spot");
+    const metalData = await metalRes.json();
+    const ons = metalData[0].gold; // USD cinsinden ons altın
 
-    /* DÖVİZ (OpenExchange — saatlik) */
-    async function fetchRates() {
-      try {
-        const url =
-          `https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
+    const gram = (ons * usd) / 31.1035;
 
-        const res = await fetch(url);
-        const json = await res.json();
+    document.getElementById("usd").textContent = usd.toFixed(2);
+    document.getElementById("eur").textContent = eur.toFixed(2);
+    document.getElementById("gbp").textContent = gbp.toFixed(2);
+    document.getElementById("gram").textContent = gram.toFixed(2);
 
-        const r = json.rates;
-        const usdtry = r.TRY;
-        const eurtry = r.TRY / r.EUR;
-        const gbptry = r.TRY / r.GBP;
+    // Saat
+    const now = new Date();
+    document.getElementById("time").textContent =
+      "Son güncelleme: " + now.toLocaleTimeString("tr-TR");
 
-        cache.usd = usdtry;
-        cache.eur = eurtry;
-        cache.gbp = gbptry;
+  } catch(err){
+    console.error("Hata:", err);
+  }
+}
 
-        updateValue("usd", usdtry);
-        updateValue("eur", eurtry);
-        updateValue("gbp", gbptry);
-
-        lastRealUpdate = new Date(json.timestamp * 1000);
-      } catch (e) {
-        console.log("Döviz alınamadı:", e);
-      }
-    }
-
-    /* ALTIN (15 saniyede bir — truncgil embed) */
-    async function fetchGold() {
-      try {
-        const proxy = "https://api.allorigins.win/raw?url=";
-        const url = proxy + encodeURIComponent("https://finans.truncgil.com/today.json");
-
-        const res = await fetch(url);
-        const json = await res.json();
-
-        if (!json || !json["Gram Altın"]) {
-          console.log("Altın verisi bulunamadı:", json);
-          return;
-        }
-
-        const gram = parseFloat(json["Gram Altın"].Alış.replace(",", "."));
-
-        if (!isNaN(gram)) {
-          cache.gold = gram;
-          updateValue("gold", gram);
-        }
-      } catch (e) {
-        console.log("Altın alınamadı:", e);
-      }
-    }
-
-    /* BAŞLAT */
-    fetchRates();                     // döviz ilk yükleme
-    fetchGold();                      // altın ilk yükleme
-    setInterval(fetchRates, 3600000); // döviz 1 saatte bir
-    setInterval(fetchGold, 15000);    // altın 15 sn’de bir
-  </script>
+// İlk çalıştırma
+fetchData();
+// Her 30 saniyede bir güncelle
+setInterval(fetchData, 30000);
+</script>
 
 </body>
 </html>
