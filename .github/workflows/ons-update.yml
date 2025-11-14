@@ -2,22 +2,30 @@ name: Update Ons Price
 
 on:
   schedule:
-    - cron: "*/1 * * * *"   # her 1 dakikada bir
+    - cron: "*/1 * * * *"
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch metals.live ONS price
+      - name: Fetch Yahoo Finance Gold ONS price
         run: |
-          RESP=$(curl -s https://api.metals.live/v1/spot)
-          # jq kullanmadan, sed ile "gold" değerini çekiyoruz
-          ONS=$(echo "$RESP" | sed -n 's/.*"gold":\s*\([0-9.]*\).*/\1/p')
-          echo "{ \"gold\": $ONS }" > api/ons.json
+          # Yahoo Finance API (ons altın)
+          RESP=$(curl -s "https://query1.finance.yahoo.com/v8/finance/chart/GC=F")
+          # JSON içinden regularMarketPrice değerini çekiyoruz:
+          ONS=$(echo "$RESP" | sed -n 's/.*"regularMarketPrice":\s*\([0-9.]*\).*/\1/p')
+          
+          # Hata kontrolü: Eğer ONS boşsa "null" yazılmasın
+          if [ -z "$ONS" ]; then
+            echo "{ \"gold\": null }" > api/ons.json
+          else
+            echo "{ \"gold\": $ONS }" > api/ons.json
+          fi
 
       - name: Commit & Push
         run: |
