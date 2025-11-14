@@ -55,18 +55,8 @@
       box-sizing: border-box;
     }
 
-    .label {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 4px;
-    }
-
-    .value {
-      font-weight: bold;
-      font-size: 22px;
-      transition: color 0.3s;
-    }
-
+    .label { font-size: 12px; color: #aaa; }
+    .value { font-size: 22px; font-weight: bold; transition: color 0.3s; }
     .up { color: #18c964; }
     .down { color: #ff4d4f; }
   </style>
@@ -83,108 +73,67 @@
     <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
   </footer>
 
-  <script>
-    var el = function(id){ return document.getElementById(id); };
+<script>
+function el(id){ return document.getElementById(id); }
 
-    var cache = { usd:null, eur:null, gbp:null, gold:null };
-    var last = {};
-    var lastUpdate = null;
+var cache = { usd:null, eur:null, gbp:null, gold:null };
+var last = {};
+var lastUpdate = null;
 
-    function applyChange(id,val){
-      var e = el(id);
-      var v = Number(val);
-      if(!v){ e.textContent="--"; return; }
+function applyChange(id,val){
+  var e = el(id);
+  var v = Number(val);
+  if(!v){ e.textContent="--"; return; }
+  var prev = last[id];
+  last[id] = v;
+  cache[id] = v;
+  e.textContent = v.toFixed(2);
+  if(prev){
+    if(v > prev) e.className="value up";
+    else if(v < prev) e.className="value down";
+    else e.className="value";
+  } else e.className="value";
+}
 
-      var prev = last[id];
-      last[id] = v;
-      cache[id] = v;
+function fetchJSON(url,cb){
+  fetch(url).then(r=>r.json()).then(cb).catch(()=>{});
+}
 
-      e.textContent = v.toFixed(2);
+function fetchRates(){
+  fetchJSON(
+    "https://api.exchangerate.host/latest?base=USD&symbols=TRY,EUR,GBP",
+    function(data){
+      var r = data.rates;
+      var usd = r.TRY;
+      var eur = usd/r.EUR;
+      var gbp = usd/r.GBP;
+      applyChange("usd",usd);
+      applyChange("eur",eur);
+      applyChange("gbp",gbp);
+      lastUpdate = new Date();
+      fetchGold();
+    }
+  );
+}
 
-      if(prev){
-        if(v > prev) e.className="value up";
-        else if(v < prev) e.className="value down";
-        else e.className="value";
-      } else {
-        e.className="value";
+function fetchGold(){
+  fetchJSON(
+    "https://data-asg.goldprice.org/dbXRates/USD",
+    function(data){
+      var ons = data?.items?.[0]?.xauPrice;
+      if(ons && cache.usd){
+        var gram = (ons * cache.usd) / 31.1035;
+        applyChange("gold", gram);
       }
     }
+  );
+}
 
-    function refreshDisplay(){
-      ["usd","eur","gbp","gold"].forEach(function(id){
-        var v = cache[id];
-        el(id).textContent = (v == null || isNaN(v)) ? "--" : v.toFixed(2);
-      });
+window.addEventListener("load",fetchRates);
 
-      if(lastUpdate){
-        el("time").textContent =
-          "Son güncelleme: " + lastUpdate.toLocaleTimeString("tr-TR",{hour12:false});
-      }
-    }
-
-    function fetchJSON(url,cb,err){
-      var ok=false;
-      fetch(url).then(function(r){
-        if(!r.ok) throw 0;
-        return r.text();
-      }).then(function(t){
-        ok=true;
-        var j = JSON.parse(t);
-        cb(j);
-      }).catch(function(){
-        if(!ok) err();
-      });
-
-      setTimeout(function(){ if(!ok) err(); },8000);
-    }
-
-    function fetchRates(){
-      fetchJSON(
-        "https://api.exchangerate.host/latest?base=USD&symbols=TRY,EUR,GBP",
-        function(data){
-          var r = data.rates;
-
-          var usdTry = r.TRY;
-          var eurTry = usdTry / r.EUR;
-          var gbpTry = usdTry / r.GBP;
-
-          applyChange("usd",usdTry);
-          applyChange("eur",eurTry);
-          applyChange("gbp",gbpTry);
-
-          lastUpdate = new Date();
-
-          fetchGold();  // Ons = GitHub proxy
-          refreshDisplay();
-        },
-        function(){
-          console.log("Döviz API hatası");
-        }
-      );
-    }
-
-    function fetchGold(){
-      fetchJSON(
-        "https://ardakahvecioglu-cmd.github.io/dovi/api/ons.json",
-        function(data){
-          if(!data.gold || !cache.usd) return;
-
-          var gram = (data.gold * cache.usd) / 31.1035;
-          applyChange("gold", gram);
-        },
-        function(){
-          console.log("Altın API hatası");
-        }
-      );
-    }
-
-    window.addEventListener("load",function(){
-      fetchRates();
-    });
-
-    setInterval(fetchRates,3600000);
-    setInterval(refreshDisplay,15000);
-  </script>
+setInterval(fetchRates,3600000);
+setInterval(()=>{},15000);
+</script>
 
 </body>
 </html>
