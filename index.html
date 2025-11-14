@@ -1,29 +1,30 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=640, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Canlı Kurlar</title>
+
   <style>
     body {
       margin: 0;
       background: #0f1115;
       color: #fff;
-      font-family: Arial, sans-serif;
-      width: 640px;
-      height: 1152px;
+      font-family: Segoe UI, Roboto, Arial, sans-serif;
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
       position: relative;
     }
+
     header {
       position: absolute;
       left: 15px;
-      right: 15px;
       bottom: 95px;
-      font-size: 18px;
+      font-size: 16px;
       color: #bbb;
-      white-space: nowrap;
     }
+
     footer {
       position: absolute;
       bottom: 0;
@@ -32,155 +33,140 @@
       display: flex;
       justify-content: space-between;
       padding: 10px 15px;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0, 0, 0, 0.8);
       border-top: 1px solid #222;
+      box-sizing: border-box;
     }
+
     .card {
       flex: 1;
-      margin: 0 5px;
       text-align: center;
+      margin: 0 5px;
       background: #1a1f29;
-      padding: 8px 6px;
       border-radius: 12px;
+      padding: 8px 6px;
+      font-size: 18px;
     }
-    .label { font-size: 12px; color: #aaa; }
-    .value { font-size: 22px; font-weight: bold; transition: color .3s; }
+
+    .label { font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    .value { font-weight: bold; font-size: 22px; transition: color .3s; }
     .up { color: #18c964; }
     .down { color: #ff4d4f; }
   </style>
 </head>
+
 <body>
 
-<header>
-  <span id="time">Yükleniyor...</span>
-</header>
+  <header><span id="time">Yükleniyor...</span></header>
 
-<footer>
-  <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
-  <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
-  <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
-  <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
-</footer>
+  <footer>
+    <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
+    <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+    <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+    <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+  </footer>
 
-<script>
-// -------------------- GLOBAL DEĞİŞKENLER --------------------
-var last  = {};
-var cache = { usd: null, eur: null, gbp: null, gold: null };
-var OER_KEY = "7ac0eb5b948f4a4e9e929a3164e3808a"; // senin OER key'in
+  <script>
+    const el = id => document.getElementById(id);
+    const OER_KEY = "7ac0eb5b948f4a4e9e929a3164e3808a";
 
-// -------------------- EKRANI GÜNCELLEYEN FONKSİYON --------------------
-function updateValue(id, val) {
-  var e = document.getElementById(id);
-  if (!e) return;
+    let cache = { usd: null, eur: null, gbp: null, gold: null };
+    let last = {};
+    let lastRealUpdate = null;
 
-  var prev = last[id];
-  last[id] = val;
-  cache[id] = val;
+    function updateValue(id, val) {
+      const box = el(id);
+      const num = parseFloat(val);
+      if (isNaN(num)) {
+        box.textContent = "--";
+        box.className = "value";
+        return;
+      }
 
-  e.innerHTML = val.toFixed(2);
+      const prev = last[id];
+      last[id] = num;
+      cache[id] = num;
+      box.textContent = num.toFixed(2);
 
-  if (prev !== undefined) {
-    if (val > prev)      e.className = "value up";
-    else if (val < prev) e.className = "value down";
-    else                 e.className = "value";
-  } else {
-    e.className = "value";
-  }
-}
-
-// -------------------- ES5 UYUMLU JSON İSTEĞİ --------------------
-function fetchJSON(url, callback) {
-  var xhr = new XMLHttpRequest();
-  xhr.open("GET", url, true);
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
-        try {
-          var data = JSON.parse(xhr.responseText);
-          callback(data);
-        } catch (e) {
-          console.log("JSON parse hatası:", e);
-        }
+      if (prev !== undefined) {
+        if (num > prev) box.className = "value up";
+        else if (num < prev) box.className = "value down";
+        else box.className = "value";
       } else {
-        console.log("İstek hatası:", url, xhr.status);
+        box.className = "value";
       }
     }
-  };
-  xhr.send();
-}
 
-// -------------------- DÖVİZ (OER) --------------------
-function loadRates() {
-  var url =
-    "https://openexchangerates.org/api/latest.json?app_id=" +
-    OER_KEY +
-    "&symbols=EUR,GBP,TRY";
+    function refreshDisplay() {
+      ["usd","eur","gbp","gold"].forEach(id => {
+        if (cache[id] != null) {
+          el(id).textContent = cache[id].toFixed(2);
+        }
+      });
 
-  fetchJSON(url, function(res) {
-    if (!res || !res.rates) {
-      console.log("OER verisi eksik:", res);
-      return;
+      if (lastRealUpdate)
+        el("time").textContent = "Son güncelleme: " +
+          lastRealUpdate.toLocaleTimeString("tr-TR", {hour12:false});
     }
 
-    var r = res.rates;
-    if (!r.TRY || !r.EUR || !r.GBP) {
-      console.log("OER oranları eksik:", r);
-      return;
-    }
+    // ---- Döviz (saatte bir)
+    async function fetchRates() {
+      try {
+        const lastCall = parseInt(localStorage.getItem("lastFetchTime") || "0", 10);
+        const now = Date.now();
+        if (now - lastCall < 3600000) return;
 
-    updateValue("usd", r.TRY);
-    updateValue("eur", r.TRY / r.EUR);
-    updateValue("gbp", r.TRY / r.GBP);
+        const url = `https://openexchangerates.org/api/latest.json?app_id=${OER_KEY}&symbols=EUR,GBP,TRY`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const r = json.rates;
 
-    document.getElementById("time").innerHTML =
-      "Son güncelleme: " +
-      new Date().toLocaleTimeString("tr-TR", { hour12: false });
-  });
-}
+        updateValue("usd", r.TRY);
+        updateValue("eur", r.TRY / r.EUR);
+        updateValue("gbp", r.TRY / r.GBP);
 
-// -------------------- ALTIN (XAU→USD→GRAM TL) --------------------
-function refreshGold() {
-  // USD/TRY henüz gelmediyse altın hesaplamayalım
-  if (!cache.usd) return;
-
-  var url = "https://api.exchangerate.host/convert?from=XAU&to=USD&amount=1";
-
-  fetchJSON(url, function(res) {
-    try {
-      if (!res || res.success === false) {
-        console.log("Altın verisi eksik:", res);
-        return;
+        lastRealUpdate = new Date(json.timestamp * 1000);
+        localStorage.setItem("lastFetchTime", now);
+        refreshDisplay();
+      } catch(e){
+        console.log("Döviz hatası:", e);
       }
-
-      var info = res.info || {};
-      var onsUsd = parseFloat(info.rate);
-
-      if (isNaN(onsUsd)) {
-        console.log("Ons USD sayı değil:", info.rate);
-        return;
-      }
-
-      // 1 ons = 31.1035 gram
-      var gramUsd = onsUsd / 31.1035;
-      var gramTry = gramUsd * cache.usd;
-
-      updateValue("gold", gramTry);
-    } catch (e) {
-      console.log("Altın parse hatası:", e);
     }
-  });
-}
 
-// -------------------- BAŞLAT --------------------
-loadRates();      // sayfa açılır açılmaz döviz
-refreshGold();    // ve altın denemesi
+    // ---- Altın (15 saniyede bir)
+    async function fetchGold() {
+      try {
+        if (!cache.usd) return;
 
-// Döviz: saatte 1
-setInterval(loadRates, 60 * 60 * 1000);
+        const res = await fetch("https://api.metals.live/v1/spot");
+        const json = await res.json();
 
-// Altın: 60 saniyede 1 (istersen 15000 yapıp 15 sn'ye çekebilirsin)
-setInterval(refreshGold, 60000);
-</script>
+        const onsUsd = json[0].gold;
+        if (!onsUsd) return;
+
+        const gramTry = (onsUsd * cache.usd) / 31.1035;
+
+        updateValue("gold", gramTry);
+      } catch (e) {
+        console.log("Altın hatası:", e);
+      }
+    }
+
+    // İlk yükleme
+    fetchRates();
+    fetchGold();
+    refreshDisplay();
+
+    // Döviz -> saatlik
+    setInterval(fetchRates, 60 * 60 * 1000);
+
+    // Altın -> 15 saniye
+    setInterval(fetchGold, 15000);
+
+    // Ekranı yenile (yeşil/kırmızı animasyon kalsın)
+    setInterval(refreshDisplay, 15000);
+
+  </script>
 
 </body>
 </html>
