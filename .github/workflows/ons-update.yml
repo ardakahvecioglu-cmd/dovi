@@ -1,0 +1,29 @@
+name: Update Ons Price
+
+on:
+  schedule:
+    - cron: "*/1 * * * *"   # her 1 dakikada bir
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Fetch metals.live ONS price
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          RESP=$(curl -s https://api.metals.live/v1/spot)
+          ONS=$(echo "$RESP" | jq '.[0].gold')
+          echo "{ \"gold\": $ONS }" > dovi/api/ons.json
+
+      - name: Commit & Push
+        run: |
+          git config --global user.email "github-action@github.com"
+          git config --global user.name "GitHub Action"
+          git add dovi/api/ons.json
+          git commit -m "Update ons price" || echo "No changes"
+          git push
