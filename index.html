@@ -1,185 +1,164 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=640, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=640, initial-scale=1.0">
   <title>Canlı Kurlar</title>
   <style>
-    body{
-      margin:0;
-      background:#0f1115;
-      color:#fff;
-      font-family:Arial, sans-serif;
-      width:640px;
-      height:1152px;
-      overflow:hidden;
-      position:relative;
+    body {
+      margin: 0;
+      background: #0f1115;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      width: 640px;
+      height: 1152px;
+      overflow: hidden;
+      position: relative;
     }
-    header{
-      position:absolute;
-      left:15px;
-      right:15px;
-      bottom:95px;
-      font-size:18px;
-      color:#bbb;
-      white-space:nowrap;
+    header {
+      position: absolute;
+      left: 15px;
+      right: 15px;
+      bottom: 95px;
+      font-size: 18px;
+      color: #bbb;
+      white-space: nowrap;
     }
-    footer{
-      position:absolute;
-      bottom:0;
-      left:0;
-      width:100%;
-      display:flex;
-      justify-content:space-between;
-      padding:10px 15px;
-      background:rgba(0,0,0,0.8);
-      border-top:1px solid #222;
-      box-sizing:border-box;
+    footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 15px;
+      background: rgba(0,0,0,0.8);
+      border-top: 1px solid #222;
     }
-    .card{
-      flex:1;
-      text-align:center;
-      margin:0 5px;
-      background:#1a1f29;
-      border-radius:12px;
-      padding:8px 6px;
-      font-size:18px;
-      box-sizing:border-box;
+    .card {
+      flex: 1;
+      margin: 0 5px;
+      text-align: center;
+      background: #1a1f29;
+      padding: 8px 6px;
+      border-radius: 12px;
     }
-    .label{font-size:12px;color:#aaa;margin-bottom:4px;}
-    .value{font-weight:bold;font-size:22px;transition:color .3s;}
-    .up{color:#18c964;}
-    .down{color:#ff4d4f;}
+    .label { font-size: 12px; color: #aaa; }
+    .value { font-size: 22px; font-weight: bold; transition: color .3s; }
+    .up { color: #18c964; }
+    .down { color: #ff4d4f; }
   </style>
 </head>
 <body>
 
-  <header><span id="time">Yükleniyor...</span></header>
+<header>
+  <span id="time">Yükleniyor...</span>
+</header>
 
-  <footer>
-    <div class="card">
-      <div class="label">USD / TRY</div>
-      <div id="usd" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">EUR / TRY</div>
-      <div id="eur" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">GBP / TRY</div>
-      <div id="gbp" class="value">--</div>
-    </div>
-    <div class="card">
-      <div class="label">GRAM ALTIN</div>
-      <div id="gold" class="value">--</div>
-    </div>
-  </footer>
+<footer>
+  <div class="card"><div class="label">USD / TRY</div><div id="usd" class="value">--</div></div>
+  <div class="card"><div class="label">EUR / TRY</div><div id="eur" class="value">--</div></div>
+  <div class="card"><div class="label">GBP / TRY</div><div id="gbp" class="value">--</div></div>
+  <div class="card"><div class="label">GRAM ALTIN</div><div id="gold" class="value">--</div></div>
+</footer>
 
-  <script>
-    // --- Genel durum ---
-    var last = {};
-    var cache = { usd:null, eur:null, gbp:null, gold:null };
-    var OER_KEY = "7ac0eb5b948f4a4e9e929a3164e3808a";
+<script>
+// ------------------------------------------------------
+// GLOBAL DEĞİŞKENLER
+// ------------------------------------------------------
+var last = {};
+var cache = { usd: null, eur: null, gbp: null, gold: null };
+var OER_KEY = "7ac0eb5b948f4a4e9e929a3164e3808a"; // SENİN USD API KEY'İN
 
-    function updateValue(id, val){
-      var e = document.getElementById(id);
-      if(!e) return;
+// ------------------------------------------------------
+// EKRANA DEĞER YAZAN FONKSİYON
+// ------------------------------------------------------
+function updateValue(id, val) {
+  var e = document.getElementById(id);
+  var prev = last[id];
+  last[id] = val;
+  cache[id] = val;
+  e.innerHTML = val.toFixed(2);
 
-      var num = parseFloat(val);
-      if(isNaN(num)){
-        e.innerHTML = "--";
-        e.className = "value";
-        return;
+  if (prev !== undefined) {
+    if (val > prev) e.className = "value up";
+    else if (val < prev) e.className = "value down";
+    else e.className = "value";
+  }
+}
+
+// ------------------------------------------------------
+// KLASİK ES5 UYUMLU JSON İSTEĞİ
+// ------------------------------------------------------
+function fetchJSON(url, callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        try {
+          callback(JSON.parse(xhr.responseText));
+        } catch (e) {
+          console.log("JSON parse hatası:", e);
+        }
       }
+    }
+  };
+  xhr.send();
+}
 
-      var prev = last[id];
-      last[id] = num;
-      cache[id] = num;
+// ------------------------------------------------------
+// DÖVİZ — OpenExchangeRates (saatte 1)
+// ------------------------------------------------------
+function loadRates() {
+  var url =
+    "https://openexchangerates.org/api/latest.json?app_id=" +
+    OER_KEY +
+    "&symbols=EUR,GBP,TRY";
 
-      e.innerHTML = num.toFixed(2);
+  fetchJSON(url, function (res) {
+    if (!res || !res.rates) return;
 
-      if(prev !== undefined && !isNaN(prev)){
-        if(num > prev) e.className = "value up";
-        else if(num < prev) e.className = "value down";
-        else e.className = "value";
-      }else{
-        e.className = "value";
+    var r = res.rates;
+    updateValue("usd", r.TRY);
+    updateValue("eur", r.TRY / r.EUR);
+    updateValue("gbp", r.TRY / r.GBP);
+
+    document.getElementById("time").innerHTML =
+      "Son güncelleme: " +
+      new Date().toLocaleTimeString("tr-TR", { hour12: false });
+  });
+}
+
+// ------------------------------------------------------
+// ALTIN — GENELPARA (15 SANİYEDE 1)
+// ------------------------------------------------------
+function refreshGold() {
+  fetchJSON("https://api.genelpara.com/embed/altin.json", function (res) {
+    try {
+      var ga = res.GA; // GA = Gram Altın
+      if (!ga) return;
+
+      var satis = parseFloat(ga.satis.replace(",", "."));
+      if (!isNaN(satis)) {
+        updateValue("gold", satis);
       }
+    } catch (e) {
+      console.log("Altın parse hatası:", e);
     }
+  });
+}
 
-    function fetchJSON(url, cb){
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", url, true);
-      xhr.onreadystatechange = function(){
-        if(xhr.readyState === 4){
-          if(xhr.status === 200){
-            try{
-              var data = JSON.parse(xhr.responseText);
-              cb(data);
-            }catch(e){
-              console.log("JSON parse hatası:", e);
-            }
-          }else{
-            console.log("İstek hatası:", url, xhr.status);
-          }
-        }
-      };
-      xhr.send();
-    }
+// ------------------------------------------------------
+// BAŞLAT
+// ------------------------------------------------------
+loadRates();
+refreshGold();
 
-    // --- Döviz: OER, saatte 1 defa ---
-    function loadRates(){
-      var url = "https://openexchangerates.org/api/latest.json?app_id="
-                + OER_KEY + "&symbols=EUR,GBP,TRY";
+setInterval(loadRates, 60 * 60 * 1000);   // döviz 1 saatte 1
+setInterval(refreshGold, 15000);          // altın 15 saniyede 1
 
-      fetchJSON(url, function(res){
-        if(!res || !res.rates) return;
-
-        var r = res.rates;
-        if(r.TRY && r.EUR && r.GBP){
-          updateValue("usd", r.TRY);
-          updateValue("eur", r.TRY / r.EUR);
-          updateValue("gbp", r.TRY / r.GBP);
-        }
-
-        var tEl = document.getElementById("time");
-        tEl.innerHTML = "Son güncelleme: " +
-          new Date().toLocaleTimeString("tr-TR",{hour12:false});
-      });
-    }
-
-    // --- Altın: exchangerate.host, 60 sn'de 1 ---
-    function loadGold(){
-      var url = "https://api.exchangerate.host/latest?base=XAU&symbols=TRY";
-
-      fetchJSON(url, function(res){
-        try{
-          if(!res || !res.rates || !res.rates.TRY){
-            console.log("Altın verisi eksik:", res);
-            return;
-          }
-          var xauTry = parseFloat(res.rates.TRY); // 1 ons XAU = ? TRY
-          if(isNaN(xauTry)){
-            console.log("Altın TRY sayıya çevrilemedi:", res.rates.TRY);
-            return;
-          }
-          var gram = xauTry / 31.1035; // 1 ons = 31.1035 gram
-          updateValue("gold", gram);
-        }catch(e){
-          console.log("Altın parse hatası:", e);
-        }
-      });
-    }
-
-    // İlk yükleme
-    loadRates();
-    loadGold();
-
-    // Döviz: saatte 1
-    setInterval(loadRates, 60*60*1000);
-    // Altın: 60 sn'de 1 (istersen burayı 30000 yapıp 30 sn yapabilirsin)
-    setInterval(loadGold, 60000);
-  </script>
+</script>
 
 </body>
 </html>
