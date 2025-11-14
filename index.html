@@ -21,7 +21,7 @@
       position: absolute;
       left: 15px;
       bottom: 95px;
-      font-size: 16px;
+      font-size: 15px;
       color: #bbb;
     }
 
@@ -45,11 +45,11 @@
       background: #1a1f29;
       border-radius: 12px;
       padding: 8px 6px;
-      font-size: 18px;
+      box-sizing: border-box;
     }
 
     .label { font-size: 12px; color: #aaa; margin-bottom: 4px; }
-    .value { font-weight: bold; font-size: 22px; transition: color .3s; }
+    .value { font-size: 22px; font-weight: bold; transition: color .3s; }
     .up { color: #18c964; }
     .down { color: #ff4d4f; }
   </style>
@@ -68,104 +68,101 @@
 
   <script>
     const el = id => document.getElementById(id);
-    const OER_KEY = "7ac0eb5b948f4a4e9e929a3164e3808a";
+    const OER_APP_ID = "7ac0eb5b948f4a4e9e929a3164e3808a";
 
-    let cache = { usd: null, eur: null, gbp: null, gold: null };
-    let last = {};
+    const cache = { usd: null, eur: null, gbp: null, gold: null };
+    const last = {};
     let lastRealUpdate = null;
 
+    /** EKRANA YAZDIRMA **/
     function updateValue(id, val) {
-      const box = el(id);
-      const num = parseFloat(val);
-      if (isNaN(num)) {
-        box.textContent = "--";
-        box.className = "value";
+      const e = el(id);
+      if (!e) return;
+
+      if (val == null || isNaN(val)) {
+        e.textContent = "--";
         return;
       }
 
       const prev = last[id];
-      last[id] = num;
-      cache[id] = num;
-      box.textContent = num.toFixed(2);
+      last[id] = val;
+
+      e.textContent = val.toFixed(2);
 
       if (prev !== undefined) {
-        if (num > prev) box.className = "value up";
-        else if (num < prev) box.className = "value down";
-        else box.className = "value";
-      } else {
-        box.className = "value";
+        if (val > prev) e.className = "value up";
+        else if (val < prev) e.className = "value down";
+        else e.className = "value";
       }
     }
 
-    function refreshDisplay() {
-      ["usd","eur","gbp","gold"].forEach(id => {
-        if (cache[id] != null) {
-          el(id).textContent = cache[id].toFixed(2);
-        }
-      });
-
-      if (lastRealUpdate)
-        el("time").textContent = "Son güncelleme: " +
-          lastRealUpdate.toLocaleTimeString("tr-TR", {hour12:false});
+    function showTime() {
+      if (!lastRealUpdate) return;
+      el("time").textContent = "Son güncelleme: " +
+        lastRealUpdate.toLocaleTimeString("tr-TR", { hour12: false });
     }
 
-    // ---- Döviz (saatte bir)
+    setInterval(showTime, 1000);
+
+    /** DÖVİZ (OpenExchange – saatlik) **/
     async function fetchRates() {
       try {
-        const lastCall = parseInt(localStorage.getItem("lastFetchTime") || "0", 10);
-        const now = Date.now();
-        if (now - lastCall < 3600000) return;
-
-        const url = `https://openexchangerates.org/api/latest.json?app_id=${OER_KEY}&symbols=EUR,GBP,TRY`;
+        const url = `https://openexchangerates.org/api/latest.json?app_id=${OER_APP_ID}&symbols=EUR,GBP,TRY`;
         const res = await fetch(url);
         const json = await res.json();
-        const r = json.rates;
 
-        updateValue("usd", r.TRY);
-        updateValue("eur", r.TRY / r.EUR);
-        updateValue("gbp", r.TRY / r.GBP);
+        const r = json.rates;
+        const usdtry = r.TRY;
+        const eurtry = r.TRY / r.EUR;
+        const gbptry = r.TRY / r.GBP;
+
+        cache.usd = usdtry;
+        cache.eur = eurtry;
+        cache.gbp = gbptry;
+
+        updateValue("usd", usdtry);
+        updateValue("eur", eurtry);
+        updateValue("gbp", gbptry);
 
         lastRealUpdate = new Date(json.timestamp * 1000);
-        localStorage.setItem("lastFetchTime", now);
-        refreshDisplay();
-      } catch(e){
-        console.log("Döviz hatası:", e);
+
+      } catch (e) {
+        console.log("Döviz alınamadı:", e);
       }
     }
 
-    // ---- Altın (15 saniyede bir)
+    /** ALTIN (15 saniyede bir – truncgil embed, CORS yok) **/
     async function fetchGold() {
       try {
-        if (!cache.usd) return;
+        const proxy = "https://api.allorigins.win/raw?url=";
+        const url = proxy + encodeURIComponent("https://finans.truncgil.com/today.json");
 
-        const res = await fetch("https://api.metals.live/v1/spot");
+        const res = await fetch(url);
         const json = await res.json();
 
-        const onsUsd = json[0].gold;
-        if (!onsUsd) return;
+        if (!json || !json["Gram Altın"]) {
+          console.log("Altın verisi bulunamadı:", json);
+          return;
+        }
 
-        const gramTry = (onsUsd * cache.usd) / 31.1035;
+        const metal = json["Gram Altın"];
+        const alis = parseFloat(metal.Alış.replace(",", "."));
 
-        updateValue("gold", gramTry);
+        if (!isNaN(alis)) {
+          cache.gold = alis;
+          updateValue("gold", alis);
+        }
+
       } catch (e) {
-        console.log("Altın hatası:", e);
+        console.log("Altın alınamadı:", e);
       }
     }
 
-    // İlk yükleme
-    fetchRates();
-    fetchGold();
-    refreshDisplay();
-
-    // Döviz -> saatlik
-    setInterval(fetchRates, 60 * 60 * 1000);
-
-    // Altın -> 15 saniye
-    setInterval(fetchGold, 15000);
-
-    // Ekranı yenile (yeşil/kırmızı animasyon kalsın)
-    setInterval(refreshDisplay, 15000);
-
+    /** Başlat **/
+    fetchRates();                 // döviz ilk yükleme
+    fetchGold();                  // altın ilk yükleme
+    setInterval(fetchRates, 3600000); // 1 saat
+    setInterval(fetchGold, 15000);    // 15 sn
   </script>
 
 </body>
