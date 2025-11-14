@@ -40,7 +40,6 @@
       align-items: center;
       padding: 10px 15px;
       background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(8px);
       border-top: 1px solid #222;
       box-sizing: border-box;
     }
@@ -85,49 +84,16 @@
   </footer>
 
   <script>
-    var el = function(id) { return document.getElementById(id); };
-    var cache = { usd: null, eur: null, gbp: null, gold: null };
+    var el = function(id){ return document.getElementById(id); };
+
+    var cache = { usd:null, eur:null, gbp:null, gold:null };
     var last = {};
-    var lastRealUpdate = null;
+    var lastUpdate = null;
 
-    function safeLoadStorage() {
-      try {
-        return JSON.parse(localStorage.getItem("lastData") || "{}");
-      } catch (e) { return {}; }
-    }
-
-    function saveStorage() {
-      var obj = {
-        usd: cache.usd,
-        eur: cache.eur,
-        gbp: cache.gbp,
-        gold: cache.gold,
-        time: lastRealUpdate
-      };
-      try {
-        localStorage.setItem("lastData", JSON.stringify(obj));
-      } catch (e) {}
-    }
-
-    function refreshDisplay() {
-      var ids = ["usd", "eur", "gbp", "gold"];
-      for (var i = 0; i < ids.length; i++) {
-        var id = ids[i];
-        var v = cache[id];
-        el(id).textContent = (v == null || isNaN(v)) ? "--" : v.toFixed(2);
-      }
-
-      if (lastRealUpdate) {
-        el("time").textContent =
-          "Son güncelleme: " +
-          lastRealUpdate.toLocaleTimeString("tr-TR", { hour12: false });
-      }
-    }
-
-    function applyChange(id, val) {
+    function applyChange(id,val){
       var e = el(id);
       var v = Number(val);
-      if (!v) return;
+      if(!v){ e.textContent="--"; return; }
 
       var prev = last[id];
       last[id] = v;
@@ -135,91 +101,89 @@
 
       e.textContent = v.toFixed(2);
 
-      if (prev) {
-        if (v > prev) e.className = "value up";
-        else if (v < prev) e.className = "value down";
-        else e.className = "value";
+      if(prev){
+        if(v > prev) e.className="value up";
+        else if(v < prev) e.className="value down";
+        else e.className="value";
       } else {
-        e.className = "value";
+        e.className="value";
       }
     }
 
-    // Basit fetch wrapper (timeout'lu)
-    function fetchJSON(url, cb, errcb) {
-      var done = false;
+    function refreshDisplay(){
+      ["usd","eur","gbp","gold"].forEach(function(id){
+        var v = cache[id];
+        el(id).textContent = (v == null || isNaN(v)) ? "--" : v.toFixed(2);
+      });
 
-      fetch(url)
-        .then(function(r) {
-          if (!r.ok) throw new Error(r.status);
-          return r.json();
-        })
-        .then(function(data) {
-          if (!done) { done = true; cb(data); }
-        })
-        .catch(function() {
-          if (!done) { done = true; errcb(); }
-        });
-
-      setTimeout(function() {
-        if (!done) { done = true; errcb(); }
-      }, 8000);
+      if(lastUpdate){
+        el("time").textContent =
+          "Son güncelleme: " + lastUpdate.toLocaleTimeString("tr-TR",{hour12:false});
+      }
     }
 
-    // Döviz kurları
-    function fetchRates() {
+    function fetchJSON(url,cb,err){
+      var ok=false;
+      fetch(url).then(function(r){
+        if(!r.ok) throw 0;
+        return r.text();
+      }).then(function(t){
+        ok=true;
+        var j = JSON.parse(t);
+        cb(j);
+      }).catch(function(){
+        if(!ok) err();
+      });
+
+      setTimeout(function(){ if(!ok) err(); },8000);
+    }
+
+    function fetchRates(){
       fetchJSON(
-        "https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP",
-        function(data) {
-          var r = data && data.rates ? data.rates : null;
-          if (!r) return;
+        "https://api.exchangerate.host/latest?base=USD&symbols=TRY,EUR,GBP",
+        function(data){
+          var r = data.rates;
 
-          var usdTry = 1 / r.USD;
-          var eurTry = 1 / r.EUR;
-          var gbpTry = 1 / r.GBP;
+          var usdTry = r.TRY;
+          var eurTry = usdTry / r.EUR;
+          var gbpTry = usdTry / r.GBP;
 
-          applyChange("usd", usdTry);
-          applyChange("eur", eurTry);
-          applyChange("gbp", gbpTry);
+          applyChange("usd",usdTry);
+          applyChange("eur",eurTry);
+          applyChange("gbp",gbpTry);
 
-          lastRealUpdate = new Date();
-          // USD güncellenince altını da USD'den hesapla
-          computeGoldFromUsd();
+          lastUpdate = new Date();
 
-          saveStorage();
+          fetchGold();  // Ons = GitHub proxy
           refreshDisplay();
         },
-        function() {
-          console.log("Döviz isteği başarısız");
+        function(){
+          console.log("Döviz API hatası");
         }
       );
     }
 
-    // Gram altın = USDTRY * 0.058 (yaklaşık piyasaya denk)
-    function computeGoldFromUsd() {
-      if (!cache.usd) return;
-      var gram = cache.usd * 0.058;
-      applyChange("gold", gram);
-      saveStorage();
+    function fetchGold(){
+      fetchJSON(
+        "https://ardakahvecioglu-cmd.github.io/dovi/api/ons.json",
+        function(data){
+          if(!data.gold || !cache.usd) return;
+
+          var gram = (data.gold * cache.usd) / 31.1035;
+          applyChange("gold", gram);
+        },
+        function(){
+          console.log("Altın API hatası");
+        }
+      );
     }
 
-    // SAYFA AÇILIŞI
-    window.addEventListener("load", function() {
-      var stored = safeLoadStorage();
-
-      if (stored.usd) cache.usd = stored.usd;
-      if (stored.eur) cache.eur = stored.eur;
-      if (stored.gbp) cache.gbp = stored.gbp;
-      if (stored.gold) cache.gold = stored.gold;
-      if (stored.time) lastRealUpdate = new Date(stored.time);
-
-      refreshDisplay();
-      fetchRates();      // ilk döviz çek
-      computeGoldFromUsd(); // varsa kayıttan altın göster
+    window.addEventListener("load",function(){
+      fetchRates();
     });
 
-    // GÜNCELLEMELER
-    setInterval(fetchRates, 3600000);     // döviz her 1 saatte bir
-    setInterval(refreshDisplay, 15000);   // ekranda yazıyı tazele (saat vs değiştirmek istersen)
+    setInterval(fetchRates,3600000);
+    setInterval(refreshDisplay,15000);
   </script>
 
 </body>
