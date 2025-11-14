@@ -129,6 +129,7 @@
       }
     }
 
+    // Eski tarayıcı uyumlu fetch wrapper
     function fetchJSON(url, cb, errcb) {
       var done = false;
 
@@ -149,6 +150,7 @@
       }, 8000);
     }
 
+    // Döviz kurları
     function fetchRates() {
       fetchJSON(
         "https://api.exchangerate.host/latest?base=TRY&symbols=USD,EUR,GBP",
@@ -172,26 +174,37 @@
       );
     }
 
+    // ALTIN → commodities-api (CORS + DNS garantili)
     function fetchGold() {
       if (!cache.usd) return;
 
       fetchJSON(
-        "https://api.metals.live/v1/spot",
+        "https://commodities-api.com/api/latest?access_key=demo&symbols=XAU",
         function(data) {
-          var ons = data[0].gold;
-          var gram = (ons * cache.usd) / 31.1035;
-          applyChange("gold", gram);
+          try {
+            var onsUsd = data.data.rates.XAU;   // XAU = 1 Ons
 
-          localStorage.setItem("lastData",
-            JSON.stringify({ ...cache, time: lastRealUpdate })
-          );
+            if (!onsUsd || onsUsd <= 0) throw "xau-yok";
+
+            var gram = (onsUsd * cache.usd) / 31.1035;
+
+            applyChange("gold", gram);
+
+            localStorage.setItem("lastData",
+              JSON.stringify({ ...cache, time: lastRealUpdate })
+            );
+          }
+          catch(e) {
+            console.log("Altın veri hatası:", e);
+          }
         },
         function() {
-          console.log("Altın isteği başarısız");
+          console.log("Altın isteği zaman aşımı");
         }
       );
     }
 
+    // SAYFA AÇILIŞI
     window.addEventListener("load", function() {
       var stored = safeLoadStorage();
 
@@ -207,6 +220,7 @@
       fetchGold();
     });
 
+    // GÜNCELLEME ARALIKLARI
     setInterval(fetchGold, 15000);
     setInterval(fetchRates, 3600000);
     setInterval(refreshDisplay, 15000);
